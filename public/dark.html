@@ -1,0 +1,890 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>Code Picker - 快速选取代码文件</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; overflow: hidden; }
+  body {
+    font-family: -apple-system, "Segoe UI", sans-serif;
+    background: #1e1e1e; color: #d4d4d4;
+    display: flex;
+  }
+
+  .sidebar {
+    width: 55%;
+    min-width: 260px;
+    max-width: 80vw;
+    display: flex; flex-direction: column;
+    background: #1e1e1e;
+    scrollbar-gutter: stable;
+  }
+  .toolbar {
+    padding: 12px; background: #252526;
+    display: flex; gap: 8px; align-items: center;
+    border-bottom: 1px solid #333;
+    flex-shrink: 0;
+  }
+  .toolbar input {
+    flex: 1; min-width: 0;
+    padding: 8px 12px; background: #3c3c3c; border: 1px solid #555;
+    color: #d4d4d4; border-radius: 4px; font-size: 13px; outline: none;
+  }
+  .toolbar input:focus { border-color: #007acc; }
+  .toolbar button {
+    padding: 8px 14px; background: #0e639c; color: white; border: none;
+    border-radius: 4px; cursor: pointer; font-size: 13px;
+    white-space: nowrap; flex-shrink: 0;
+  }
+  .toolbar button:hover { background: #1177bb; }
+  .toolbar button.ghost { background: #3c3c3c; }
+  .toolbar button.ghost:hover { background: #4a4a4a; }
+
+  .tree {
+    flex: 1; overflow-y: scroll;
+    overflow-x: hidden;
+    padding: 8px 0;
+    user-select: none;
+    scrollbar-gutter: stable;
+  }
+  .node { padding: 4px 12px; cursor: pointer; font-size: 13px; display: flex; align-items: center; gap: 8px; }
+  .node:hover { background: #2a2d2e; }
+  .node.selected { background: #094771; }
+  .node .icon { width: 14px; text-align: center; opacity: 0.7; flex-shrink: 0; }
+  .node .name { flex-shrink: 0; }
+  .node .size { font-size: 11px; opacity: 0.4; flex-shrink: 0; margin-left: auto; }
+  .children { padding-left: 16px; }
+  .hidden { display: none; }
+
+  .node.search-result .path {
+    color: #6a9955;
+    font-size: 12px;
+    opacity: 0.9;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+  }
+
+  .resizer {
+    width: 5px;
+    cursor: col-resize;
+    background: #333;
+    flex-shrink: 0;
+    position: relative;
+    transition: background 0.15s;
+  }
+  .resizer:hover, .resizer.dragging { background: #007acc; }
+  .resizer::after {
+    content: '';
+    position: absolute;
+    top: 0; bottom: 0; left: -3px; right: -3px;
+  }
+
+  .right {
+    flex: 1; min-width: 0;
+    display: flex; flex-direction: column;
+    background: #1e1e1e;
+    overflow: hidden;
+    scrollbar-gutter: stable;
+  }
+  .right-header {
+    padding: 12px; background: #252526;
+    border-bottom: 1px solid #333;
+    display: flex; justify-content: space-between; align-items: center;
+    gap: 12px;
+    flex-shrink: 0;
+  }
+  .right-header .count {
+    font-size: 13px; color: #999;
+    display: flex; align-items: center; gap: 6px;
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+  }
+  .right-header .count > #count {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .right-header .actions {
+    display: flex; gap: 8px; align-items: center;
+    flex-shrink: 0;
+  }
+  .right-header button {
+    padding: 8px 16px; background: #0e639c; color: white; border: none;
+    border-radius: 4px; cursor: pointer; font-size: 13px;
+    white-space: nowrap; flex-shrink: 0;
+  }
+  .right-header button:hover { background: #1177bb; }
+  .right-header button:disabled { opacity: 0.5; cursor: default; }
+  .right-header button.danger { background: #6b1f1f; }
+  .right-header button.danger:hover { background: #8a2828; }
+  .right-header button.ghost { background: #3c3c3c; }
+  .right-header button.ghost:hover { background: #4a4a4a; }
+
+  .toggle {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 12px; color: #999; cursor: pointer; user-select: none;
+    white-space: nowrap; flex-shrink: 0;
+  }
+  .toggle input { cursor: pointer; }
+
+  .stale-badge {
+    display: none;
+    background: #d18616; color: #1e1e1e;
+    font-size: 11px; padding: 2px 6px; border-radius: 3px;
+    font-weight: bold;
+    flex-shrink: 0;
+  }
+  .stale-badge.show { display: inline-block; }
+
+  .preview {
+    flex: 1; overflow: auto; padding: 12px;
+    font-family: "Consolas", "Monaco", monospace; font-size: 12px;
+    white-space: pre; line-height: 1.5;
+  }
+  .preview .file-marker { color: #4ec9b0; font-weight: bold; }
+  .selected-list {
+    max-height: 140px; overflow-y: auto; padding: 8px 12px;
+    background: #252526; border-bottom: 1px solid #333;
+    font-size: 12px; font-family: monospace;
+    flex-shrink: 0;
+  }
+  .selected-list .item {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 2px 0; color: #9cdcfe; gap: 8px;
+  }
+  .selected-list .item span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 1;
+    min-width: 0;
+  }
+  .selected-list .item button {
+    background: none; border: none; color: #f48771; cursor: pointer; font-size: 12px;
+    flex-shrink: 0;
+  }
+  .toast {
+    position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+    background: #0e639c; color: white; padding: 10px 20px; border-radius: 4px;
+    opacity: 0; transition: opacity 0.3s; pointer-events: none; z-index: 999;
+  }
+  .toast.show { opacity: 1; }
+
+  .modal-backdrop {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    z-index: 1000;
+    align-items: center; justify-content: center;
+  }
+  .modal-backdrop.show { display: flex; }
+  .modal {
+    width: 720px; max-width: 90vw; max-height: 85vh;
+    background: #252526; border: 1px solid #444; border-radius: 6px;
+    display: flex; flex-direction: column;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.6);
+  }
+  .modal-header {
+    padding: 14px 18px; border-bottom: 1px solid #333;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .modal-header h3 { font-size: 14px; font-weight: 600; }
+  .modal-close {
+    background: none; border: none; color: #999; cursor: pointer;
+    font-size: 16px; padding: 4px 8px;
+  }
+  .modal-close:hover { color: #fff; }
+  .modal-body { padding: 16px 18px; flex: 1; overflow: auto; display: flex; flex-direction: column; gap: 10px; }
+  .modal-body .hint {
+    font-size: 12px; color: #999; line-height: 1.6;
+  }
+  .modal-body .hint code {
+    background: #1e1e1e; padding: 1px 5px; border-radius: 3px;
+    color: #4ec9b0; font-family: Consolas, Monaco, monospace; font-size: 11px;
+  }
+  #batchInput {
+    width: 100%; height: 260px; resize: vertical;
+    background: #1e1e1e; border: 1px solid #555; border-radius: 4px;
+    color: #d4d4d4; padding: 10px 12px;
+    font-family: Consolas, Monaco, monospace; font-size: 12px;
+    line-height: 1.6; outline: none;
+  }
+  #batchInput:focus { border-color: #007acc; }
+  .batch-result {
+    font-size: 12px; font-family: Consolas, Monaco, monospace;
+    white-space: pre-wrap; padding: 8px 12px; border-radius: 4px;
+    background: #1e1e1e; border-left: 3px solid #444;
+    max-height: 140px; overflow: auto; display: none;
+  }
+  .batch-result.show { display: block; }
+  .batch-result.ok { border-left-color: #4ec9b0; color: #4ec9b0; }
+  .batch-result.warn { border-left-color: #d18616; color: #d18616; }
+  .batch-result.error { border-left-color: #f48771; color: #f48771; }
+  .modal-footer {
+    padding: 12px 18px; border-top: 1px solid #333;
+    display: flex; justify-content: flex-end; gap: 8px;
+  }
+  .modal-footer button {
+    padding: 8px 16px; background: #0e639c; color: white; border: none;
+    border-radius: 4px; cursor: pointer; font-size: 13px;
+  }
+  .modal-footer button:hover { background: #1177bb; }
+  .modal-footer button.ghost { background: #3c3c3c; }
+  .modal-footer button.ghost:hover { background: #4a4a4a; }
+</style>
+</head>
+<body>
+
+<div class="sidebar" id="sidebar">
+  <div class="toolbar">
+    <input id="search" placeholder="🔍 模糊搜索文件名或路径...  (Ctrl/Cmd+I 批量导入)" />
+    <button class="ghost" id="collapseBtn">折叠全部</button>
+  </div>
+  <div class="tree" id="tree"></div>
+</div>
+
+<div class="resizer" id="resizer" title="拖动调整宽度"></div>
+
+<div class="right" id="rightPane">
+  <div class="right-header">
+    <span class="count">
+      <span id="count">已选 0 个文件</span>
+      <span class="stale-badge" id="staleBadge">内容已更新，点击刷新</span>
+    </span>
+    <div class="actions">
+      <label class="toggle" title="每 2 秒自动重新读取已选文件内容">
+        <input type="checkbox" id="autoRefresh" /> 自动刷新
+      </label>
+      <button class="ghost" id="refreshBtn">🔄 刷新</button>
+      <button class="danger" id="clearBtn">清空</button>
+      <button id="copyBtn">📋 复制全部</button>
+    </div>
+  </div>
+  <div class="selected-list" id="selectedList"></div>
+  <div class="preview" id="preview">选中文件后此处显示预览...</div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<div class="modal-backdrop" id="batchModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>📥 批量导入文件</h3>
+      <button class="modal-close" id="batchClose">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="hint">
+        每行一个路径（相对于启动目录）。也支持直接粘贴本工具生成的
+        <code>====== path ======</code> 格式输出。空行、以 <code>#</code> 开头的注释行会被忽略，重复项自动去重。
+        <br>
+        快捷键：<code>Ctrl/Cmd + I</code> 打开，<code>Esc</code> 关闭，<code>Ctrl/Cmd + Enter</code> 导入并复制。
+      </div>
+      <textarea id="batchInput" spellcheck="false" placeholder="src/features/tasks/TaskList.jsx
+src/features/tasks/TaskTimeline.jsx
+src/features/tasks/TaskComposer.jsx
+..."></textarea>
+      <div class="batch-result" id="batchResult"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="ghost" id="batchCancel">取消</button>
+      <button class="ghost" id="batchImportOnly">仅导入</button>
+      <button id="batchImport">导入并复制</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const state = {
+  tree: [],
+  selected: new Set(),
+  fileCache: new Map(),
+  mtimeCache: new Map(),
+  collapsed: new Set(),
+  stale: false,
+  autoTimer: null
+};
+
+// ============ 工具函数 ============
+async function fetchJSON(url, opts) {
+  const r = await fetch(url, opts);
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.classList.remove('show'), 1600);
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function normalizePath(p) {
+  return String(p)
+    .replace(/\\/g, '/')
+    .replace(/^\.\//, '')
+    .replace(/^\/+/, '')
+    .trim();
+}
+
+/**
+ * 可靠的复制函数。
+ * 关键点：先把当前页面焦点从任何输入框移走，再写剪贴板。
+ * 避免在批量导入 Modal 中调用时，复制到的是 textarea 里的路径原文。
+ */
+async function copyTextToClipboard(text) {
+  // 1) 主动失焦并清除选区
+  try {
+    const ae = document.activeElement;
+    if (ae && typeof ae.blur === 'function') {
+      if (typeof ae.setSelectionRange === 'function') {
+        // 把选区折叠到末尾，避免 execCommand('copy') 复制到输入框内容
+        const len = ae.value ? ae.value.length : 0;
+        ae.setSelectionRange(len, len);
+      }
+      ae.blur();
+    }
+  } catch (e) { console.warn('[clipboard]', e); }
+
+  // 2) 优先用异步剪贴板 API
+  if (navigator.clipboard && window.isSecureContext) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch (_) {}
+  }
+
+  // 3) 降级方案
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.setAttribute('readonly', '');
+  ta.style.position = 'fixed';
+  ta.style.top = '-1000px';
+  ta.style.left = '-1000px';
+  ta.style.opacity = '0';
+  document.body.appendChild(ta);
+  ta.focus();
+  ta.select();
+  ta.setSelectionRange(0, text.length);
+  let ok = false;
+  try {
+    ok = document.execCommand('copy');
+  } catch (_) {
+    ok = false;
+  }
+  document.body.removeChild(ta);
+  return ok;
+}
+
+// ============ 左右分隔条拖拽 ============
+function initResizer() {
+  const resizer = document.getElementById('resizer');
+  const sidebar = document.getElementById('sidebar');
+  let dragging = false;
+
+  resizer.addEventListener('mousedown', (e) => {
+    dragging = true;
+    resizer.classList.add('dragging');
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+    e.preventDefault();
+  });
+
+  document.addEventListener('mousemove', (e) => {
+    if (!dragging) return;
+    const totalW = window.innerWidth;
+    let leftW = e.clientX;
+    leftW = Math.max(260, Math.min(totalW * 0.8, leftW));
+    sidebar.style.width = leftW + 'px';
+  });
+
+  document.addEventListener('mouseup', () => {
+    if (!dragging) return;
+    dragging = false;
+    resizer.classList.remove('dragging');
+    document.body.style.cursor = '';
+    document.body.style.userSelect = '';
+    try {
+      localStorage.setItem('codepicker.sidebarWidth', sidebar.style.width);
+    } catch (_) {}
+  });
+
+  try {
+    const saved = localStorage.getItem('codepicker.sidebarWidth');
+    if (saved) sidebar.style.width = saved;
+  } catch (_) {}
+}
+
+// ============ 加载文件树 ============
+async function loadTree() {
+  const data = await fetchJSON('/api/tree');
+  state.tree = data.tree;
+  renderTree();
+}
+
+// ============ 渲染文件树 ============
+function renderTree() {
+  const container = document.getElementById('tree');
+  const keyword = document.getElementById('search').value.trim().toLowerCase();
+  container.innerHTML = '';
+  if (keyword) {
+    const matches = [];
+    collectFiles(state.tree, matches);
+    const filtered = matches.filter(f => f.path.toLowerCase().includes(keyword));
+    if (filtered.length === 0) {
+      container.innerHTML = '<div style="padding:12px;color:#666;font-size:13px">无匹配文件</div>';
+      return;
+    }
+    filtered.sort((a, b) => {
+      const aName = a.name.toLowerCase().includes(keyword) ? 0 : 1;
+      const bName = b.name.toLowerCase().includes(keyword) ? 0 : 1;
+      if (aName !== bName) return aName - bName;
+      return a.path.localeCompare(b.path);
+    });
+    filtered.slice(0, 500).forEach(f => {
+      container.appendChild(makeSearchResultNode(f));
+    });
+  } else {
+    state.tree.forEach(node => container.appendChild(renderNode(node, '')));
+  }
+}
+
+function collectFiles(nodes, out) {
+  for (const n of nodes) {
+    if (n.type === 'file') out.push(n);
+    else if (n.children) collectFiles(n.children, out);
+  }
+}
+
+function renderNode(node, parentPath) {
+  if (node.type === 'file') return makeFileNode(node, node.path);
+
+  const wrapper = document.createElement('div');
+  const isCollapsed = state.collapsed.has(node.path);
+  const dirEl = document.createElement('div');
+  dirEl.className = 'node';
+  dirEl.innerHTML = `<span class="icon">${isCollapsed ? '▶' : '▼'}</span><span class="name">📁 ${escapeHtml(node.name)}</span>`;
+  dirEl.onclick = () => {
+    if (isCollapsed) state.collapsed.delete(node.path);
+    else state.collapsed.add(node.path);
+    renderTree();
+  };
+  wrapper.appendChild(dirEl);
+
+  const childrenEl = document.createElement('div');
+  childrenEl.className = 'children' + (isCollapsed ? ' hidden' : '');
+  node.children.forEach(c => childrenEl.appendChild(renderNode(c, node.path)));
+  wrapper.appendChild(childrenEl);
+  return wrapper;
+}
+
+function makeSearchResultNode(file) {
+  const el = document.createElement('div');
+  el.className = 'node search-result' + (state.selected.has(file.path) ? ' selected' : '');
+  const sizeStr = file.size < 1024 ? `${file.size}B` : `${(file.size/1024).toFixed(1)}K`;
+  el.innerHTML = `
+    <span class="icon">${state.selected.has(file.path) ? '☑' : '☐'}</span>
+    <span class="name">${escapeHtml(file.name)}</span>
+    <span class="path">${escapeHtml(file.path)}</span>
+    <span class="size">${sizeStr}</span>
+  `;
+  el.title = file.path;
+  el.onclick = () => toggleSelect(file.path, file);
+  return el;
+}
+
+function makeFileNode(file, fullPath) {
+  const el = document.createElement('div');
+  el.className = 'node' + (state.selected.has(fullPath) ? ' selected' : '');
+  const sizeStr = file.size < 1024 ? `${file.size}B` : `${(file.size/1024).toFixed(1)}K`;
+  el.innerHTML = `<span class="icon">${state.selected.has(fullPath) ? '☑' : '☐'}</span>
+                  <span class="name">${escapeHtml(file.name)}</span>
+                  <span class="size">${sizeStr}</span>`;
+  el.title = fullPath;
+  el.onclick = () => toggleSelect(fullPath, file);
+  return el;
+}
+
+// ============ 选中/取消 ============
+async function toggleSelect(path, file) {
+  if (state.selected.has(path)) {
+    state.selected.delete(path);
+  } else {
+    state.selected.add(path);
+    if (!state.fileCache.has(path)) {
+      try {
+        const data = await fetchJSON('/api/file?path=' + encodeURIComponent(path));
+        state.fileCache.set(path, data.content);
+        if (data.mtime) state.mtimeCache.set(path, data.mtime);
+      } catch (e) {
+        state.fileCache.set(path, `[读取失败: ${e.message}]`);
+      }
+    }
+  }
+  renderTree();
+  renderSelected();
+}
+
+// ============ 刷新 ============
+async function refreshSelected(silent = false) {
+  const paths = [...state.selected];
+  if (paths.length === 0) {
+    if (!silent) showToast('没有已选文件');
+    return;
+  }
+  const data = await fetchJSON('/api/files', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ paths })
+  });
+  let changed = 0;
+  for (const f of data.files) {
+    if (state.fileCache.get(f.path) !== f.content) changed++;
+    state.fileCache.set(f.path, f.content);
+    if (f.mtime) state.mtimeCache.set(f.path, f.mtime);
+  }
+  state.stale = false;
+  document.getElementById('staleBadge').classList.remove('show');
+  renderSelected();
+  if (!silent) {
+    showToast(changed > 0 ? `🔄 已刷新，${changed} 个文件有更新` : '🔄 已刷新，内容无变化');
+  }
+  return changed;
+}
+
+async function checkUpdates() {
+  if (state.selected.size === 0) return;
+  try {
+    const paths = [...state.selected];
+    const data = await fetchJSON('/api/files', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ paths })
+    });
+    let changed = 0;
+    for (const f of data.files) {
+      if (state.fileCache.get(f.path) !== f.content) {
+        state.fileCache.set(f.path, f.content);
+        if (f.mtime) state.mtimeCache.set(f.path, f.mtime);
+        changed++;
+      }
+    }
+    if (changed > 0) {
+      state.stale = false;
+      document.getElementById('staleBadge').classList.remove('show');
+      renderSelected();
+    }
+  } catch (e) {}
+}
+
+// ============ 渲染已选列表与预览 ============
+function renderSelected() {
+  const count = state.selected.size;
+  document.getElementById('count').textContent = `已选 ${count} 个文件`;
+
+  const listEl = document.getElementById('selectedList');
+  listEl.innerHTML = '';
+  const paths = [...state.selected].sort();
+  paths.forEach(p => {
+    const item = document.createElement('div');
+    item.className = 'item';
+    item.innerHTML = `<span title="${escapeHtml(p)}">${escapeHtml(p)}</span>`;
+    const btn = document.createElement('button');
+    btn.textContent = '✕';
+    btn.onclick = () => {
+      state.selected.delete(p);
+      renderTree();
+      renderSelected();
+    };
+    item.appendChild(btn);
+    listEl.appendChild(item);
+  });
+
+  const previewEl = document.getElementById('preview');
+  if (count === 0) {
+    previewEl.textContent = '选中文件后此处显示预览...';
+    return;
+  }
+  const output = buildOutput(paths);
+  previewEl.innerHTML = escapeHtml(output).replace(
+    /^(====== .+? ======)$/gm,
+    '<span class="file-marker">$1</span>'
+  );
+}
+
+function buildOutput(paths) {
+  return paths.map(p => {
+    const content = state.fileCache.get(p) ?? '';
+    return `====== ${p} ======\n${content}`;
+  }).join('\n\n');
+}
+
+// ============ 复制全部 ============
+async function copyAll(opts = {}) {
+  if (state.selected.size === 0) {
+    if (!opts.silent) showToast('请先选择文件');
+    return false;
+  }
+  const paths = [...state.selected].sort();
+  try {
+    // 复制前强制重新拉取最新内容
+    const data = await fetchJSON('/api/files', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ paths })
+    });
+    for (const f of data.files) {
+      state.fileCache.set(f.path, f.content);
+      if (f.mtime) state.mtimeCache.set(f.path, f.mtime);
+    }
+    state.stale = false;
+    document.getElementById('staleBadge').classList.remove('show');
+    renderSelected();
+
+    // 关键：只用文件内容构建的格式化文本，不涉及任何输入框内容
+    const text = buildOutput(paths);
+
+    const ok = await copyTextToClipboard(text);
+    if (ok) {
+      showToast(`✅ 已复制 ${paths.length} 个文件 (${text.length} 字符)`);
+    } else {
+      showToast('❌ 复制失败，请手动从右侧预览区复制');
+    }
+    return ok;
+  } catch (e) {
+    showToast('❌ 读取失败: ' + e.message);
+    return false;
+  }
+}
+
+// ============ 批量导入 ============
+function openBatchModal() {
+  const modal = document.getElementById('batchModal');
+  const input = document.getElementById('batchInput');
+  const result = document.getElementById('batchResult');
+  result.classList.remove('show', 'ok', 'warn', 'error');
+  result.textContent = '';
+  modal.classList.add('show');
+  setTimeout(() => input.focus(), 50);
+}
+
+function closeBatchModal() {
+  document.getElementById('batchModal').classList.remove('show');
+}
+
+function parseBatchInput(raw) {
+  const lines = String(raw).split(/\r?\n/);
+  const out = [];
+  for (let line of lines) {
+    line = line.trim();
+    if (!line || line.startsWith('#')) continue;
+    const m = line.match(/^={3,}\s*(.+?)\s*={3,}$/);
+    if (m) out.push(m[1].trim());
+    else out.push(line);
+  }
+  return out;
+}
+
+function showBatchResult(msg, type) {
+  const el = document.getElementById('batchResult');
+  el.textContent = msg;
+  el.classList.remove('ok', 'warn', 'error');
+  el.classList.add('show', type);
+}
+
+async function doBatchImport() {
+  const raw = document.getElementById('batchInput').value;
+  const inputPaths = parseBatchInput(raw);
+  if (inputPaths.length === 0) {
+    showBatchResult('⚠️ 请输入至少一个文件路径', 'error');
+    return { matched: 0, unmatched: [] };
+  }
+
+  const allFiles = [];
+  collectFiles(state.tree, allFiles);
+  const normMap = new Map();
+  for (const f of allFiles) normMap.set(normalizePath(f.path), f);
+
+  const matched = [];
+  const unmatched = [];
+  const seen = new Set();
+  for (const p of inputPaths) {
+    const key = normalizePath(p);
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    const f = normMap.get(key);
+    if (f) matched.push(f);
+    else unmatched.push(p);
+  }
+
+  if (matched.length === 0) {
+    showBatchResult(
+      `❌ 未匹配到任何文件（共输入 ${inputPaths.length} 条）\n` +
+      unmatched.slice(0, 20).map(p => '  · ' + p).join('\n') +
+      (unmatched.length > 20 ? `\n  ... 还有 ${unmatched.length - 20} 条` : ''),
+      'error'
+    );
+    return { matched: 0, unmatched };
+  }
+
+  const toLoad = matched.filter(f => !state.fileCache.has(f.path));
+  if (toLoad.length > 0) {
+    try {
+      const data = await fetchJSON('/api/files', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ paths: toLoad.map(f => f.path) })
+      });
+      for (const item of data.files) {
+        state.fileCache.set(item.path, item.content);
+        if (item.mtime) state.mtimeCache.set(item.path, item.mtime);
+      }
+    } catch (e) {
+      showBatchResult('❌ 读取文件内容失败：' + e.message, 'error');
+      return { matched: 0, unmatched };
+    }
+  }
+
+  for (const f of matched) state.selected.add(f.path);
+
+  renderTree();
+  renderSelected();
+
+  let msg = `✅ 成功导入 ${matched.length} 个文件`;
+  let type = 'ok';
+  if (unmatched.length > 0) {
+    type = 'warn';
+    msg += `，${unmatched.length} 个未找到：\n` +
+      unmatched.slice(0, 20).map(p => '  · ' + p).join('\n');
+    if (unmatched.length > 20) msg += `\n  ... 还有 ${unmatched.length - 20} 条`;
+  }
+  showBatchResult(msg, type);
+
+  return { matched, unmatched };
+}
+
+// ============ 事件绑定 ============
+document.getElementById('search').addEventListener('input', renderTree);
+
+document.getElementById('collapseBtn').onclick = () => {
+  state.collapsed.clear();
+  const collectDirs = (nodes) => {
+    for (const n of nodes) {
+      if (n.type === 'dir') {
+        state.collapsed.add(n.path);
+        collectDirs(n.children);
+      }
+    }
+  };
+  collectDirs(state.tree);
+  renderTree();
+};
+
+document.getElementById('clearBtn').onclick = () => {
+  state.selected.clear();
+  state.fileCache.clear();
+  state.mtimeCache.clear();
+  state.stale = false;
+  document.getElementById('staleBadge').classList.remove('show');
+  renderTree();
+  renderSelected();
+};
+
+document.getElementById('refreshBtn').onclick = () => refreshSelected(false);
+
+document.getElementById('autoRefresh').onchange = (e) => {
+  if (state.autoTimer) {
+    clearInterval(state.autoTimer);
+    state.autoTimer = null;
+  }
+  if (e.target.checked) {
+    state.autoTimer = setInterval(checkUpdates, 2000);
+    showToast('已开启自动刷新（每 2 秒）');
+  } else {
+    showToast('已关闭自动刷新');
+  }
+};
+
+document.getElementById('copyBtn').onclick = async () => {
+  const btn = document.getElementById('copyBtn');
+  const orig = btn.textContent;
+  btn.textContent = '读取中...';
+  btn.disabled = true;
+  try {
+    await copyAll();
+  } finally {
+    btn.textContent = orig;
+    btn.disabled = false;
+  }
+};
+
+// ---- 批量导入快捷键 ----
+document.getElementById('batchClose').onclick = closeBatchModal;
+document.getElementById('batchCancel').onclick = closeBatchModal;
+
+document.addEventListener('keydown', (e) => {
+  const modalOpen = document.getElementById('batchModal').classList.contains('show');
+
+  if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && (e.key === 'i' || e.key === 'I')) {
+    e.preventDefault();
+    if (!modalOpen) openBatchModal();
+    return;
+  }
+
+  if (e.key === 'Escape' && modalOpen) {
+    closeBatchModal();
+    return;
+  }
+
+  if ((e.ctrlKey || e.metaKey) && e.key === 'Enter' && modalOpen) {
+    e.preventDefault();
+    document.getElementById('batchImport').click();
+  }
+});
+
+document.getElementById('batchImportOnly').onclick = async () => {
+  const btn = document.getElementById('batchImportOnly');
+  btn.disabled = true;
+  try {
+    const { matched } = await doBatchImport();
+    if (matched.length > 0) {
+      setTimeout(() => closeBatchModal(), 500);
+    }
+  } finally {
+    btn.disabled = false;
+  }
+};
+
+document.getElementById('batchImport').onclick = async () => {
+  const btn = document.getElementById('batchImport');
+  const orig = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = '处理中...';
+  try {
+    const { matched } = await doBatchImport();
+    if (matched.length > 0) {
+      // 关键：先关闭 modal，让焦点从 #batchInput 移走，再复制
+      closeBatchModal();
+      // 等一帧，让 DOM 更新 + 焦点回到 body
+      await new Promise(r => setTimeout(r, 50));
+      await copyAll({ silent: true });
+    }
+  } finally {
+    btn.disabled = false;
+    btn.textContent = orig;
+  }
+};
+
+// ============ 启动 ============
+initResizer();
+loadTree();
+</script>
+</body>
+</html>

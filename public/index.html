@@ -2,296 +2,667 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<title>Code Picker - 快速选取代码文件</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Code Picker · 选取文件拼成清单</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Zilla+Slab:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  html, body { height: 100%; overflow: hidden; }
-  body {
-    font-family: -apple-system, "Segoe UI", sans-serif;
-    background: #1e1e1e; color: #d4d4d4;
-    display: flex;
+  :root {
+    --sheet:     #FAFBF6;
+    --panel:     #F0F3EA;
+    --band:      #E6EDDD;
+    --rule:      #CBD3C1;
+    --rule-soft: #E3E9DA;
+    --ink:       #16201A;
+    --ink-2:     #46554A;
+    --ink-3:     #71806F;
+    --hl:        #F1E45C;
+    --hl-pale:   #F7F0A6;
+    --hl-deep:   #E9D72E;
+    --red:       #A8352A;
+    --ok:        #2F6B44;
+    --warn:      #8A6410;
+
+    --ui:   "Zilla Slab", ui-serif, Georgia, "Songti SC", "Noto Serif SC", serif;
+    --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
   }
+
+  *, *::before, *::after { box-sizing: border-box; }
+
+  html, body { height: 100%; }
+
+  body {
+    margin: 0;
+    overflow: hidden;
+    display: flex;
+    background: var(--sheet);
+    color: var(--ink);
+    font-family: var(--ui);
+    font-size: 13px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  ::-webkit-scrollbar { width: 11px; height: 11px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb {
+    background: var(--rule);
+    border: 3px solid transparent;
+    background-clip: content-box;
+  }
+  ::-webkit-scrollbar-thumb:hover { background: var(--ink-3); background-clip: content-box; }
+  * { scrollbar-width: thin; scrollbar-color: var(--rule) transparent; }
+
+  :focus-visible { outline: 2px solid var(--ink); outline-offset: 1px; }
+
+  .hidden { display: none !important; }
+
+  /* ─────────────────────────── 按钮 ─────────────────────────── */
+
+  .btn {
+    font-family: var(--ui);
+    font-size: 12.5px;
+    font-weight: 600;
+    letter-spacing: .005em;
+    line-height: 1;
+    padding: 8px 12px;
+    border: 1px solid var(--rule);
+    border-radius: 0;
+    background: transparent;
+    color: var(--ink);
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background .12s ease, border-color .12s ease, color .12s ease;
+  }
+  .btn:hover { background: var(--band); border-color: var(--ink-3); }
+  .btn:active { transform: translateY(1px); }
+
+  .btn--solid {
+    background: var(--ink);
+    border-color: var(--ink);
+    color: var(--sheet);
+  }
+  .btn--solid:hover { background: #2C3A2F; border-color: #2C3A2F; }
+  .btn--solid:disabled {
+    background: var(--ink-3);
+    border-color: var(--ink-3);
+    color: var(--panel);
+    cursor: default;
+    transform: none;
+  }
+
+  .btn--danger { color: var(--red); border-color: #D9BAB4; }
+  .btn--danger:hover { background: var(--red); border-color: var(--red); color: var(--sheet); }
+
+  /* ─────────────────────────── 左侧：索引 ─────────────────────────── */
 
   .sidebar {
-    width: 55%;
-    min-width: 260px;
-    max-width: 80vw;
-    display: flex; flex-direction: column;
-    background: #1e1e1e;
-    scrollbar-gutter: stable;
-  }
-  .toolbar {
-    padding: 12px; background: #252526;
-    display: flex; gap: 8px; align-items: center;
-    border-bottom: 1px solid #333;
+    width: 360px;
+    min-width: 232px;
+    max-width: 75vw;
     flex-shrink: 0;
-  }
-  .toolbar input {
-    flex: 1; min-width: 0;
-    padding: 8px 12px; background: #3c3c3c; border: 1px solid #555;
-    color: #d4d4d4; border-radius: 4px; font-size: 13px; outline: none;
-  }
-  .toolbar input:focus { border-color: #007acc; }
-  .toolbar button {
-    padding: 8px 14px; background: #0e639c; color: white; border: none;
-    border-radius: 4px; cursor: pointer; font-size: 13px;
-    white-space: nowrap; flex-shrink: 0;
-  }
-  .toolbar button:hover { background: #1177bb; }
-  .toolbar button.ghost { background: #3c3c3c; }
-  .toolbar button.ghost:hover { background: #4a4a4a; }
-
-  .tree {
-    flex: 1; overflow-y: scroll;
-    overflow-x: hidden;
-    padding: 8px 0;
-    user-select: none;
-    scrollbar-gutter: stable;
-  }
-  .node { padding: 4px 12px; cursor: pointer; font-size: 13px; display: flex; align-items: center; gap: 8px; }
-  .node:hover { background: #2a2d2e; }
-  .node.selected { background: #094771; }
-  .node .icon { width: 14px; text-align: center; opacity: 0.7; flex-shrink: 0; }
-  .node .name { flex-shrink: 0; }
-  .node .size { font-size: 11px; opacity: 0.4; flex-shrink: 0; margin-left: auto; }
-  .children { padding-left: 16px; }
-  .hidden { display: none; }
-
-  .node.search-result .path {
-    color: #6a9955;
-    font-size: 12px;
-    opacity: 0.9;
-    white-space: nowrap;
+    display: flex;
+    flex-direction: column;
+    background: var(--panel);
     overflow: hidden;
-    text-overflow: ellipsis;
-    min-width: 0;
   }
 
-  .resizer {
-    width: 5px;
-    cursor: col-resize;
-    background: #333;
+  .index-head {
     flex-shrink: 0;
-    position: relative;
-    transition: background 0.15s;
-  }
-  .resizer:hover, .resizer.dragging { background: #007acc; }
-  .resizer::after {
-    content: '';
-    position: absolute;
-    top: 0; bottom: 0; left: -3px; right: -3px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px;
+    border-bottom: 1px solid var(--rule);
   }
 
-  .right {
-    flex: 1; min-width: 0;
-    display: flex; flex-direction: column;
-    background: #1e1e1e;
-    overflow: hidden;
-    scrollbar-gutter: stable;
-  }
-  .right-header {
-    padding: 12px; background: #252526;
-    border-bottom: 1px solid #333;
-    display: flex; justify-content: space-between; align-items: center;
-    gap: 12px;
-    flex-shrink: 0;
-  }
-  .right-header .count {
-    font-size: 13px; color: #999;
-    display: flex; align-items: center; gap: 6px;
-    min-width: 0;
-    overflow: hidden;
-    white-space: nowrap;
-  }
-  .right-header .count > #count {
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-  .right-header .actions {
-    display: flex; gap: 8px; align-items: center;
-    flex-shrink: 0;
-  }
-  .right-header button {
-    padding: 8px 16px; background: #0e639c; color: white; border: none;
-    border-radius: 4px; cursor: pointer; font-size: 13px;
-    white-space: nowrap; flex-shrink: 0;
-  }
-  .right-header button:hover { background: #1177bb; }
-  .right-header button:disabled { opacity: 0.5; cursor: default; }
-  .right-header button.danger { background: #6b1f1f; }
-  .right-header button.danger:hover { background: #8a2828; }
-  .right-header button.ghost { background: #3c3c3c; }
-  .right-header button.ghost:hover { background: #4a4a4a; }
-
-  .toggle {
-    display: flex; align-items: center; gap: 6px;
-    font-size: 12px; color: #999; cursor: pointer; user-select: none;
-    white-space: nowrap; flex-shrink: 0;
-  }
-  .toggle input { cursor: pointer; }
-
-  .stale-badge {
-    display: none;
-    background: #d18616; color: #1e1e1e;
-    font-size: 11px; padding: 2px 6px; border-radius: 3px;
-    font-weight: bold;
-    flex-shrink: 0;
-  }
-  .stale-badge.show { display: inline-block; }
-
-  .preview {
-    flex: 1; overflow: auto; padding: 12px;
-    font-family: "Consolas", "Monaco", monospace; font-size: 12px;
-    white-space: pre; line-height: 1.5;
-  }
-  .preview .file-marker { color: #4ec9b0; font-weight: bold; }
-  .selected-list {
-    max-height: 140px; overflow-y: auto; padding: 8px 12px;
-    background: #252526; border-bottom: 1px solid #333;
-    font-size: 12px; font-family: monospace;
-    flex-shrink: 0;
-  }
-  .selected-list .item {
-    display: flex; justify-content: space-between; align-items: center;
-    padding: 2px 0; color: #9cdcfe; gap: 8px;
-  }
-  .selected-list .item span {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+  .search {
     flex: 1;
     min-width: 0;
+    font-family: var(--mono);
+    font-size: 12.5px;
+    color: var(--ink);
+    background: var(--sheet);
+    border: 1px solid var(--rule);
+    border-radius: 0;
+    padding: 8px 10px;
+    outline: none;
+    transition: border-color .12s ease;
   }
-  .selected-list .item button {
-    background: none; border: none; color: #f48771; cursor: pointer; font-size: 12px;
+  .search::placeholder { color: var(--ink-3); }
+  .search:focus { border-color: var(--ink); }
+
+  .tree {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 6px 0 28px;
+    user-select: none;
+  }
+
+  .row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 3px 12px;
+    font-family: var(--mono);
+    font-size: 12.5px;
+    line-height: 1.5;
+    cursor: pointer;
+    min-width: 0;
+  }
+  .row:hover { background: var(--band); }
+
+  .row .chev {
+    width: 10px;
+    flex-shrink: 0;
+    font-size: 9px;
+    color: var(--ink-3);
+    text-align: center;
+  }
+  .row .name {
+    flex: 0 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--ink);
+  }
+  .row .path {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 11px;
+    color: var(--ink-3);
+  }
+  .row .size {
+    flex-shrink: 0;
+    margin-left: auto;
+    font-size: 10.5px;
+    color: var(--ink-3);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .row.is-dir .name { font-weight: 600; }
+  .row.is-result .name { flex: 0 1 auto; max-width: 42%; }
+
+  /* 勾选框 */
+  .box {
+    width: 12px;
+    height: 12px;
+    flex-shrink: 0;
+    position: relative;
+    border: 1px solid var(--ink-3);
+    background: var(--sheet);
+    transition: background .1s ease, border-color .1s ease;
+  }
+  .row:hover .box { border-color: var(--ink); }
+
+  .row.is-selected { background: var(--hl-pale); }
+  .row.is-selected:hover { background: var(--hl-pale); }
+  .row.is-selected .box { background: var(--ink); border-color: var(--ink); }
+  .row.is-selected .box::after {
+    content: "";
+    position: absolute;
+    left: 3px;
+    top: 0;
+    width: 4px;
+    height: 7px;
+    border-right: 2px solid var(--sheet);
+    border-bottom: 2px solid var(--sheet);
+    transform: rotate(40deg);
+  }
+  .row.is-selected .name { font-weight: 600; }
+
+  .tree-empty {
+    margin: 0;
+    padding: 14px 12px;
+    font-family: var(--ui);
+    font-size: 12.5px;
+    color: var(--ink-3);
+  }
+
+  /* ─────────────────────────── 分隔条 ─────────────────────────── */
+
+  .resizer {
+    flex: 0 0 1px;
+    width: 1px;
+    background: var(--rule);
+    cursor: col-resize;
+    position: relative;
+    transition: background .12s ease;
+  }
+  .resizer::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: -4px;
+    right: -4px;
+  }
+  .resizer:hover,
+  .resizer.is-dragging { background: var(--ink); }
+
+  /* ─────────────────────────── 右侧：清单 ─────────────────────────── */
+
+  .galley-pane {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    background: var(--sheet);
+    overflow: hidden;
+  }
+
+  .galley-head {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 11px 12px;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .status {
+    font-family: var(--mono);
+    font-size: 12.5px;
+    color: var(--ink-2);
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .stale {
+    display: none;
+    font-family: var(--ui);
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--red);
+    border: 1px solid var(--red);
+    padding: 1px 6px;
+  }
+  .stale.is-on { display: inline-block; }
+
+  .actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-left: auto;
     flex-shrink: 0;
   }
-  .toast {
-    position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
-    background: #0e639c; color: white; padding: 10px 20px; border-radius: 4px;
-    opacity: 0; transition: opacity 0.3s; pointer-events: none; z-index: 999;
-  }
-  .toast.show { opacity: 1; }
 
-  .modal-backdrop {
+  .toggle {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-family: var(--ui);
+    font-size: 12px;
+    color: var(--ink-2);
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+  }
+  .toggle input {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 13px;
+    height: 13px;
+    margin: 0;
+    flex-shrink: 0;
+    position: relative;
+    border: 1px solid var(--ink-3);
+    background: var(--sheet);
+    cursor: pointer;
+    transition: background .1s ease, border-color .1s ease;
+  }
+  .toggle input:checked { background: var(--ink); border-color: var(--ink); }
+  .toggle input:checked::after {
+    content: "";
+    position: absolute;
+    left: 3.5px;
+    top: 0.5px;
+    width: 4px;
+    height: 7px;
+    border-right: 2px solid var(--sheet);
+    border-bottom: 2px solid var(--sheet);
+    transform: rotate(40deg);
+  }
+  .toggle:hover input { border-color: var(--ink); }
+
+  /* 已选文件清单 */
+  .picked {
+    flex-shrink: 0;
+    max-height: 128px;
+    overflow-y: auto;
+    padding: 5px 0;
+    border-bottom: 1px solid var(--rule);
+    font-family: var(--mono);
+    font-size: 12px;
+  }
+  .picked:empty { display: none; }
+
+  .picked .item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 2px 12px;
+  }
+  .picked .item:hover { background: var(--band); }
+  .picked .item .p {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--ink-2);
+  }
+  .picked .item button {
+    flex-shrink: 0;
+    border: none;
+    background: none;
+    padding: 0 2px;
+    font-family: var(--mono);
+    font-size: 14px;
+    line-height: 1;
+    color: var(--ink-3);
+    cursor: pointer;
+  }
+  .picked .item button:hover { color: var(--red); }
+
+  /* 输出区：带横格的纸张 */
+  .galley {
+    flex: 1;
+    overflow: auto;
+    padding: 16px 18px 48px;
+    background-color: var(--sheet);
+    background-image: repeating-linear-gradient(
+      to bottom,
+      transparent 0, transparent 19px,
+      var(--rule-soft) 19px, var(--rule-soft) 20px
+    );
+    background-repeat: repeat;
+    background-attachment: local;
+    background-position: 0 16px;
+  }
+
+  .code {
+    margin: 0;
+    font-family: var(--mono);
+    font-size: 12.5px;
+    line-height: 20px;
+    white-space: pre;
+    color: var(--ink-2);
+  }
+  .code .mark {
+    background: var(--hl);
+    color: var(--ink);
+    font-weight: 600;
+    padding: 0 3px;
+    transition: background .3s ease;
+  }
+  .code .tick { color: var(--ink-3); }
+
+  .galley.is-copied .code .mark { background: var(--hl-deep); }
+
+  .galley-empty {
+    margin: 0;
+    max-width: 36ch;
+    font-family: var(--ui);
+    font-size: 13px;
+    line-height: 20px;
+    color: var(--ink-3);
+  }
+
+  /* ─────────────────────────── 提示条 ─────────────────────────── */
+
+  .toast {
+    position: fixed;
+    left: 50%;
+    bottom: 24px;
+    z-index: 1200;
+    max-width: min(80vw, 560px);
+    padding: 9px 16px;
+    background: var(--ink);
+    color: var(--sheet);
+    font-family: var(--ui);
+    font-size: 12.5px;
+    font-weight: 500;
+    line-height: 1.5;
+    text-align: center;
+    opacity: 0;
+    pointer-events: none;
+    transform: translate(-50%, 8px);
+    transition: opacity .18s ease, transform .18s ease;
+  }
+  .toast.is-open { opacity: 1; transform: translate(-50%, 0); }
+
+  /* ─────────────────────────── 批量导入 ─────────────────────────── */
+
+  .backdrop {
     display: none;
-    position: fixed; inset: 0;
-    background: rgba(0, 0, 0, 0.6);
+    position: fixed;
+    inset: 0;
     z-index: 1000;
-    align-items: center; justify-content: center;
+    padding: 24px;
+    background: rgba(22, 32, 26, .48);
+    align-items: center;
+    justify-content: center;
   }
-  .modal-backdrop.show { display: flex; }
-  .modal {
-    width: 720px; max-width: 90vw; max-height: 85vh;
-    background: #252526; border: 1px solid #444; border-radius: 6px;
-    display: flex; flex-direction: column;
-    box-shadow: 0 12px 40px rgba(0,0,0,0.6);
+  .backdrop.is-open { display: flex; }
+
+  .sheet {
+    width: 720px;
+    max-width: 100%;
+    max-height: 86vh;
+    display: flex;
+    flex-direction: column;
+    background: var(--sheet);
+    border: 1px solid var(--ink);
+    box-shadow: 0 22px 60px rgba(22, 32, 26, .34);
   }
-  .modal-header {
-    padding: 14px 18px; border-bottom: 1px solid #333;
-    display: flex; justify-content: space-between; align-items: center;
+
+  .sheet-head {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 13px 18px;
+    border-bottom: 1px solid var(--rule);
   }
-  .modal-header h3 { font-size: 14px; font-weight: 600; }
-  .modal-close {
-    background: none; border: none; color: #999; cursor: pointer;
-    font-size: 16px; padding: 4px 8px;
+  .sheet-head h2 {
+    margin: 0;
+    font-family: var(--ui);
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: .005em;
   }
-  .modal-close:hover { color: #fff; }
-  .modal-body { padding: 16px 18px; flex: 1; overflow: auto; display: flex; flex-direction: column; gap: 10px; }
-  .modal-body .hint {
-    font-size: 12px; color: #999; line-height: 1.6;
+
+  .x {
+    border: none;
+    background: none;
+    padding: 2px 4px;
+    font-family: var(--ui);
+    font-size: 17px;
+    line-height: 1;
+    color: var(--ink-3);
+    cursor: pointer;
   }
-  .modal-body .hint code {
-    background: #1e1e1e; padding: 1px 5px; border-radius: 3px;
-    color: #4ec9b0; font-family: Consolas, Monaco, monospace; font-size: 11px;
+  .x:hover { color: var(--ink); }
+
+  .sheet-body {
+    flex: 1;
+    overflow: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 16px 18px;
   }
+
+  .hint {
+    margin: 0;
+    max-width: 64ch;
+    font-family: var(--ui);
+    font-size: 12.5px;
+    line-height: 1.75;
+    color: var(--ink-2);
+  }
+  .hint code {
+    font-family: var(--mono);
+    font-size: 11.5px;
+    background: var(--band);
+    padding: 1px 4px;
+    color: var(--ink);
+  }
+
   #batchInput {
-    width: 100%; height: 260px; resize: vertical;
-    background: #1e1e1e; border: 1px solid #555; border-radius: 4px;
-    color: #d4d4d4; padding: 10px 12px;
-    font-family: Consolas, Monaco, monospace; font-size: 12px;
-    line-height: 1.6; outline: none;
+    width: 100%;
+    height: 236px;
+    resize: vertical;
+    font-family: var(--mono);
+    font-size: 12.5px;
+    line-height: 20px;
+    color: var(--ink);
+    background-color: var(--sheet);
+    background-image: repeating-linear-gradient(
+      to bottom,
+      transparent 0, transparent 19px,
+      var(--rule-soft) 19px, var(--rule-soft) 20px
+    );
+    background-repeat: repeat;
+    background-attachment: local;
+    background-position: 0 14px;
+    border: 1px solid var(--rule);
+    border-radius: 0;
+    padding: 14px 16px;
+    outline: none;
+    transition: border-color .12s ease;
   }
-  #batchInput:focus { border-color: #007acc; }
-  .batch-result {
-    font-size: 12px; font-family: Consolas, Monaco, monospace;
-    white-space: pre-wrap; padding: 8px 12px; border-radius: 4px;
-    background: #1e1e1e; border-left: 3px solid #444;
-    max-height: 140px; overflow: auto; display: none;
+  #batchInput::placeholder { color: var(--ink-3); }
+  #batchInput:focus { border-color: var(--ink); }
+
+  .result {
+    display: none;
+    max-height: 148px;
+    overflow: auto;
+    padding: 10px 12px;
+    background: var(--band);
+    border-left: 3px solid var(--ink-3);
+    font-family: var(--mono);
+    font-size: 11.5px;
+    line-height: 1.7;
+    white-space: pre-wrap;
   }
-  .batch-result.show { display: block; }
-  .batch-result.ok { border-left-color: #4ec9b0; color: #4ec9b0; }
-  .batch-result.warn { border-left-color: #d18616; color: #d18616; }
-  .batch-result.error { border-left-color: #f48771; color: #f48771; }
-  .modal-footer {
-    padding: 12px 18px; border-top: 1px solid #333;
-    display: flex; justify-content: flex-end; gap: 8px;
+  .result.is-open { display: block; }
+  .result.ok { border-left-color: var(--ok); color: var(--ok); }
+  .result.warn { border-left-color: var(--warn); color: var(--warn); }
+  .result.error { border-left-color: var(--red); color: var(--red); }
+
+  .sheet-foot {
+    flex-shrink: 0;
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    padding: 12px 18px;
+    border-top: 1px solid var(--rule);
   }
-  .modal-footer button {
-    padding: 8px 16px; background: #0e639c; color: white; border: none;
-    border-radius: 4px; cursor: pointer; font-size: 13px;
+
+  /* ─────────────────────────── 窄屏 ─────────────────────────── */
+
+  @media (max-width: 720px) {
+    body { flex-direction: column; }
+    .sidebar {
+      width: 100% !important;
+      max-width: none;
+      height: 40vh;
+      min-height: 200px;
+      border-bottom: 1px solid var(--rule);
+    }
+    .resizer { display: none; }
+    .galley-pane { flex: 1; min-height: 0; }
+    .galley-head { row-gap: 8px; }
+    .actions { margin-left: 0; width: 100%; justify-content: flex-end; }
+    .backdrop { padding: 12px; }
   }
-  .modal-footer button:hover { background: #1177bb; }
-  .modal-footer button.ghost { background: #3c3c3c; }
-  .modal-footer button.ghost:hover { background: #4a4a4a; }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      transition-duration: .001ms !important;
+      animation-duration: .001ms !important;
+    }
+  }
 </style>
 </head>
 <body>
 
-<div class="sidebar" id="sidebar">
-  <div class="toolbar">
-    <input id="search" placeholder="🔍 模糊搜索文件名或路径...  (Ctrl/Cmd+I 批量导入)" />
-    <button class="ghost" id="collapseBtn">折叠全部</button>
+<!-- 索引 -->
+<aside class="sidebar" id="sidebar">
+  <div class="index-head">
+    <input class="search" id="search" type="search" autocomplete="off"
+           aria-label="搜索文件名或路径" placeholder="搜索文件名或路径">
+    <button class="btn" id="collapseBtn" type="button">折叠全部</button>
+    <button class="btn" id="importBtn" type="button" title="批量导入路径（Ctrl/Cmd + I）">批量导入</button>
   </div>
-  <div class="tree" id="tree"></div>
-</div>
+  <div class="tree" id="tree" role="tree" aria-label="项目文件"></div>
+</aside>
 
-<div class="resizer" id="resizer" title="拖动调整宽度"></div>
+<div class="resizer" id="resizer" role="separator" aria-orientation="vertical" title="拖动调整宽度"></div>
 
-<div class="right" id="rightPane">
-  <div class="right-header">
-    <span class="count">
-      <span id="count">已选 0 个文件</span>
-      <span class="stale-badge" id="staleBadge">内容已更新，点击刷新</span>
-    </span>
+<!-- 清单 -->
+<main class="galley-pane">
+  <div class="galley-head">
+    <span class="status" id="status">还没有选文件</span>
+    <span class="stale" id="staleBadge">内容已更新，点刷新</span>
     <div class="actions">
-      <label class="toggle" title="每 2 秒自动重新读取已选文件内容">
-        <input type="checkbox" id="autoRefresh" /> 自动刷新
+      <label class="toggle" title="每 2 秒重新读取一次已选文件的内容">
+        <input type="checkbox" id="autoRefresh">
+        <span>自动刷新</span>
       </label>
-      <button class="ghost" id="refreshBtn">🔄 刷新</button>
-      <button class="danger" id="clearBtn">清空</button>
-      <button id="copyBtn">📋 复制全部</button>
+      <button class="btn" id="refreshBtn" type="button">刷新</button>
+      <button class="btn btn--danger" id="clearBtn" type="button">清空</button>
+      <button class="btn btn--solid" id="copyBtn" type="button" disabled>复制全部</button>
     </div>
   </div>
-  <div class="selected-list" id="selectedList"></div>
-  <div class="preview" id="preview">选中文件后此处显示预览...</div>
-</div>
 
-<div class="toast" id="toast"></div>
+  <div class="picked" id="pickedList"></div>
 
-<div class="modal-backdrop" id="batchModal">
-  <div class="modal">
-    <div class="modal-header">
-      <h3>📥 批量导入文件</h3>
-      <button class="modal-close" id="batchClose">✕</button>
+  <div class="galley" id="galley">
+    <pre class="code hidden" id="preview"></pre>
+    <p class="galley-empty" id="galleyEmpty">还没有选文件。从左边挑几个，或用「批量导入」粘贴一份路径清单。</p>
+  </div>
+</main>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<!-- 批量导入 -->
+<div class="backdrop" id="batchModal">
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="batchTitle">
+    <div class="sheet-head">
+      <h2 id="batchTitle">批量导入文件</h2>
+      <button class="x" id="batchClose" type="button" aria-label="关闭">×</button>
     </div>
-    <div class="modal-body">
-      <div class="hint">
-        每行一个路径（相对于启动目录）。也支持直接粘贴本工具生成的
-        <code>====== path ======</code> 格式输出。空行、以 <code>#</code> 开头的注释行会被忽略，重复项自动去重。
+    <div class="sheet-body">
+      <p class="hint">
+        每行一个路径，相对于启动目录。也可以直接粘贴本工具输出的
+        <code>====== path ======</code> 段落。空行和以 <code>#</code> 开头的行会被忽略，重复路径自动去重。
         <br>
         快捷键：<code>Ctrl/Cmd + I</code> 打开，<code>Esc</code> 关闭，<code>Ctrl/Cmd + Enter</code> 导入并复制。
-      </div>
-      <textarea id="batchInput" spellcheck="false" placeholder="src/features/tasks/TaskList.jsx
+      </p>
+      <textarea id="batchInput" spellcheck="false" aria-label="文件路径列表" placeholder="src/features/tasks/TaskList.jsx
 src/features/tasks/TaskTimeline.jsx
-src/features/tasks/TaskComposer.jsx
-..."></textarea>
-      <div class="batch-result" id="batchResult"></div>
+src/features/tasks/TaskComposer.jsx"></textarea>
+      <div class="result" id="batchResult"></div>
     </div>
-    <div class="modal-footer">
-      <button class="ghost" id="batchCancel">取消</button>
-      <button class="ghost" id="batchImportOnly">仅导入</button>
-      <button id="batchImport">导入并复制</button>
+    <div class="sheet-foot">
+      <button class="btn" id="batchCancel" type="button">取消</button>
+      <button class="btn" id="batchImportOnly" type="button">仅导入</button>
+      <button class="btn btn--solid" id="batchImport" type="button">导入并复制</button>
     </div>
   </div>
 </div>
@@ -317,13 +688,19 @@ async function fetchJSON(url, opts) {
 function showToast(msg) {
   const t = document.getElementById('toast');
   t.textContent = msg;
-  t.classList.add('show');
+  t.classList.add('is-open');
   clearTimeout(t._timer);
-  t._timer = setTimeout(() => t.classList.remove('show'), 1600);
+  t._timer = setTimeout(() => t.classList.remove('is-open'), 2000);
 }
 
 function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function fmtSize(n) {
+  if (n < 1024) return n + 'B';
+  if (n < 1048576) return (n / 1024).toFixed(1) + 'K';
+  return (n / 1048576).toFixed(1) + 'M';
 }
 
 function normalizePath(p) {
@@ -336,16 +713,13 @@ function normalizePath(p) {
 
 /**
  * 可靠的复制函数。
- * 关键点：先把当前页面焦点从任何输入框移走，再写剪贴板。
- * 避免在批量导入 Modal 中调用时，复制到的是 textarea 里的路径原文。
+ * 先把焦点从任何输入框移走，再写剪贴板，避免在批量导入弹层里复制到 textarea 的原文。
  */
 async function copyTextToClipboard(text) {
-  // 1) 主动失焦并清除选区
   try {
     const ae = document.activeElement;
     if (ae && typeof ae.blur === 'function') {
       if (typeof ae.setSelectionRange === 'function') {
-        // 把选区折叠到末尾，避免 execCommand('copy') 复制到输入框内容
         const len = ae.value ? ae.value.length : 0;
         ae.setSelectionRange(len, len);
       }
@@ -353,7 +727,6 @@ async function copyTextToClipboard(text) {
     }
   } catch (e) { console.warn('[clipboard]', e); }
 
-  // 2) 优先用异步剪贴板 API
   if (navigator.clipboard && window.isSecureContext) {
     try {
       await navigator.clipboard.writeText(text);
@@ -361,7 +734,6 @@ async function copyTextToClipboard(text) {
     } catch (_) {}
   }
 
-  // 3) 降级方案
   const ta = document.createElement('textarea');
   ta.value = text;
   ta.setAttribute('readonly', '');
@@ -374,11 +746,7 @@ async function copyTextToClipboard(text) {
   ta.select();
   ta.setSelectionRange(0, text.length);
   let ok = false;
-  try {
-    ok = document.execCommand('copy');
-  } catch (_) {
-    ok = false;
-  }
+  try { ok = document.execCommand('copy'); } catch (_) { ok = false; }
   document.body.removeChild(ta);
   return ok;
 }
@@ -391,7 +759,7 @@ function initResizer() {
 
   resizer.addEventListener('mousedown', (e) => {
     dragging = true;
-    resizer.classList.add('dragging');
+    resizer.classList.add('is-dragging');
     document.body.style.cursor = 'col-resize';
     document.body.style.userSelect = 'none';
     e.preventDefault();
@@ -401,19 +769,17 @@ function initResizer() {
     if (!dragging) return;
     const totalW = window.innerWidth;
     let leftW = e.clientX;
-    leftW = Math.max(260, Math.min(totalW * 0.8, leftW));
+    leftW = Math.max(232, Math.min(totalW * 0.75, leftW));
     sidebar.style.width = leftW + 'px';
   });
 
   document.addEventListener('mouseup', () => {
     if (!dragging) return;
     dragging = false;
-    resizer.classList.remove('dragging');
+    resizer.classList.remove('is-dragging');
     document.body.style.cursor = '';
     document.body.style.userSelect = '';
-    try {
-      localStorage.setItem('codepicker.sidebarWidth', sidebar.style.width);
-    } catch (_) {}
+    try { localStorage.setItem('codepicker.sidebarWidth', sidebar.style.width); } catch (_) {}
   });
 
   try {
@@ -434,25 +800,30 @@ function renderTree() {
   const container = document.getElementById('tree');
   const keyword = document.getElementById('search').value.trim().toLowerCase();
   container.innerHTML = '';
+
   if (keyword) {
     const matches = [];
     collectFiles(state.tree, matches);
     const filtered = matches.filter(f => f.path.toLowerCase().includes(keyword));
+
     if (filtered.length === 0) {
-      container.innerHTML = '<div style="padding:12px;color:#666;font-size:13px">无匹配文件</div>';
+      const empty = document.createElement('p');
+      empty.className = 'tree-empty';
+      empty.textContent = '没有匹配的文件。';
+      container.appendChild(empty);
       return;
     }
+
     filtered.sort((a, b) => {
       const aName = a.name.toLowerCase().includes(keyword) ? 0 : 1;
       const bName = b.name.toLowerCase().includes(keyword) ? 0 : 1;
       if (aName !== bName) return aName - bName;
       return a.path.localeCompare(b.path);
     });
-    filtered.slice(0, 500).forEach(f => {
-      container.appendChild(makeSearchResultNode(f));
-    });
+
+    filtered.slice(0, 500).forEach(f => container.appendChild(makeSearchResultRow(f)));
   } else {
-    state.tree.forEach(node => container.appendChild(renderNode(node, '')));
+    state.tree.forEach(node => container.appendChild(renderNode(node, 0)));
   }
 }
 
@@ -463,14 +834,27 @@ function collectFiles(nodes, out) {
   }
 }
 
-function renderNode(node, parentPath) {
-  if (node.type === 'file') return makeFileNode(node, node.path);
+function collectDirs(nodes, out) {
+  for (const n of nodes) {
+    if (n.type === 'dir') {
+      out.push(n.path);
+      if (n.children) collectDirs(n.children, out);
+    }
+  }
+}
+
+function renderNode(node, depth) {
+  if (node.type === 'file') return makeFileRow(node, node.path, depth);
 
   const wrapper = document.createElement('div');
   const isCollapsed = state.collapsed.has(node.path);
+
   const dirEl = document.createElement('div');
-  dirEl.className = 'node';
-  dirEl.innerHTML = `<span class="icon">${isCollapsed ? '▶' : '▼'}</span><span class="name">📁 ${escapeHtml(node.name)}</span>`;
+  dirEl.className = 'row is-dir';
+  dirEl.style.paddingLeft = (12 + depth * 14) + 'px';
+  dirEl.innerHTML =
+    `<span class="chev">${isCollapsed ? '▸' : '▾'}</span>` +
+    `<span class="name">${escapeHtml(node.name)}</span>`;
   dirEl.onclick = () => {
     if (isCollapsed) state.collapsed.delete(node.path);
     else state.collapsed.add(node.path);
@@ -478,41 +862,43 @@ function renderNode(node, parentPath) {
   };
   wrapper.appendChild(dirEl);
 
-  const childrenEl = document.createElement('div');
-  childrenEl.className = 'children' + (isCollapsed ? ' hidden' : '');
-  node.children.forEach(c => childrenEl.appendChild(renderNode(c, node.path)));
-  wrapper.appendChild(childrenEl);
+  if (!isCollapsed) {
+    const childrenEl = document.createElement('div');
+    node.children.forEach(c => childrenEl.appendChild(renderNode(c, depth + 1)));
+    wrapper.appendChild(childrenEl);
+  }
   return wrapper;
 }
 
-function makeSearchResultNode(file) {
+function makeFileRow(file, fullPath, depth) {
+  const sel = state.selected.has(fullPath);
   const el = document.createElement('div');
-  el.className = 'node search-result' + (state.selected.has(file.path) ? ' selected' : '');
-  const sizeStr = file.size < 1024 ? `${file.size}B` : `${(file.size/1024).toFixed(1)}K`;
-  el.innerHTML = `
-    <span class="icon">${state.selected.has(file.path) ? '☑' : '☐'}</span>
-    <span class="name">${escapeHtml(file.name)}</span>
-    <span class="path">${escapeHtml(file.path)}</span>
-    <span class="size">${sizeStr}</span>
-  `;
-  el.title = file.path;
-  el.onclick = () => toggleSelect(file.path, file);
-  return el;
-}
-
-function makeFileNode(file, fullPath) {
-  const el = document.createElement('div');
-  el.className = 'node' + (state.selected.has(fullPath) ? ' selected' : '');
-  const sizeStr = file.size < 1024 ? `${file.size}B` : `${(file.size/1024).toFixed(1)}K`;
-  el.innerHTML = `<span class="icon">${state.selected.has(fullPath) ? '☑' : '☐'}</span>
-                  <span class="name">${escapeHtml(file.name)}</span>
-                  <span class="size">${sizeStr}</span>`;
+  el.className = 'row is-file' + (sel ? ' is-selected' : '');
+  el.style.paddingLeft = (12 + (depth || 0) * 14) + 'px';
   el.title = fullPath;
+  el.innerHTML =
+    `<span class="box"></span>` +
+    `<span class="name">${escapeHtml(file.name)}</span>` +
+    `<span class="size">${fmtSize(file.size)}</span>`;
   el.onclick = () => toggleSelect(fullPath, file);
   return el;
 }
 
-// ============ 选中/取消 ============
+function makeSearchResultRow(file) {
+  const sel = state.selected.has(file.path);
+  const el = document.createElement('div');
+  el.className = 'row is-file is-result' + (sel ? ' is-selected' : '');
+  el.title = file.path;
+  el.innerHTML =
+    `<span class="box"></span>` +
+    `<span class="name">${escapeHtml(file.name)}</span>` +
+    `<span class="path">${escapeHtml(file.path)}</span>` +
+    `<span class="size">${fmtSize(file.size)}</span>`;
+  el.onclick = () => toggleSelect(file.path, file);
+  return el;
+}
+
+// ============ 选中 / 取消 ============
 async function toggleSelect(path, file) {
   if (state.selected.has(path)) {
     state.selected.delete(path);
@@ -536,7 +922,7 @@ async function toggleSelect(path, file) {
 async function refreshSelected(silent = false) {
   const paths = [...state.selected];
   if (paths.length === 0) {
-    if (!silent) showToast('没有已选文件');
+    if (!silent) showToast('还没有选文件');
     return;
   }
   const data = await fetchJSON('/api/files', {
@@ -551,10 +937,10 @@ async function refreshSelected(silent = false) {
     if (f.mtime) state.mtimeCache.set(f.path, f.mtime);
   }
   state.stale = false;
-  document.getElementById('staleBadge').classList.remove('show');
+  document.getElementById('staleBadge').classList.remove('is-on');
   renderSelected();
   if (!silent) {
-    showToast(changed > 0 ? `🔄 已刷新，${changed} 个文件有更新` : '🔄 已刷新，内容无变化');
+    showToast(changed > 0 ? `已刷新，${changed} 个文件有更新` : '已刷新，内容没有变化');
   }
   return changed;
 }
@@ -578,44 +964,70 @@ async function checkUpdates() {
     }
     if (changed > 0) {
       state.stale = false;
-      document.getElementById('staleBadge').classList.remove('show');
+      document.getElementById('staleBadge').classList.remove('is-on');
       renderSelected();
     }
   } catch (e) {}
 }
 
-// ============ 渲染已选列表与预览 ============
+// ============ 渲染已选清单与输出 ============
 function renderSelected() {
   const count = state.selected.size;
-  document.getElementById('count').textContent = `已选 ${count} 个文件`;
 
-  const listEl = document.getElementById('selectedList');
+  document.getElementById('status').textContent =
+    count === 0 ? '还没有选文件' : `已选 ${count} 个文件`;
+
+  const copyBtn = document.getElementById('copyBtn');
+  copyBtn.textContent = count === 0 ? '复制全部' : `复制 ${count} 个文件`;
+  copyBtn.disabled = count === 0;
+
+  const listEl = document.getElementById('pickedList');
   listEl.innerHTML = '';
   const paths = [...state.selected].sort();
+
   paths.forEach(p => {
     const item = document.createElement('div');
     item.className = 'item';
-    item.innerHTML = `<span title="${escapeHtml(p)}">${escapeHtml(p)}</span>`;
+
+    const label = document.createElement('span');
+    label.className = 'p';
+    label.textContent = p;
+    label.title = p;
+
     const btn = document.createElement('button');
-    btn.textContent = '✕';
-    btn.onclick = () => {
+    btn.type = 'button';
+    btn.textContent = '×';
+    btn.title = '从清单中移除';
+    btn.setAttribute('aria-label', `移除 ${p}`);
+    btn.onclick = (e) => {
+      e.stopPropagation();
       state.selected.delete(p);
       renderTree();
       renderSelected();
     };
+
+    item.appendChild(label);
     item.appendChild(btn);
     listEl.appendChild(item);
   });
 
   const previewEl = document.getElementById('preview');
+  const emptyEl = document.getElementById('galleyEmpty');
+
   if (count === 0) {
-    previewEl.textContent = '选中文件后此处显示预览...';
+    previewEl.innerHTML = '';
+    previewEl.classList.add('hidden');
+    emptyEl.classList.remove('hidden');
     return;
   }
+
+  emptyEl.classList.add('hidden');
+  previewEl.classList.remove('hidden');
+
   const output = buildOutput(paths);
   previewEl.innerHTML = escapeHtml(output).replace(
-    /^(====== .+? ======)$/gm,
-    '<span class="file-marker">$1</span>'
+    /^(={6,}) (.+?) (={6,})$/gm,
+    '<span class="tick">$1</span> <span class="mark">$2</span> <span class="tick">$3</span>'
   );
 }
 
@@ -629,12 +1041,11 @@ function buildOutput(paths) {
 // ============ 复制全部 ============
 async function copyAll(opts = {}) {
   if (state.selected.size === 0) {
-    if (!opts.silent) showToast('请先选择文件');
+    if (!opts.silent) showToast('还没有选文件');
     return false;
   }
   const paths = [...state.selected].sort();
   try {
-    // 复制前强制重新拉取最新内容
     const data = await fetchJSON('/api/files', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -645,21 +1056,24 @@ async function copyAll(opts = {}) {
       if (f.mtime) state.mtimeCache.set(f.path, f.mtime);
     }
     state.stale = false;
-    document.getElementById('staleBadge').classList.remove('show');
+    document.getElementById('staleBadge').classList.remove('is-on');
     renderSelected();
 
-    // 关键：只用文件内容构建的格式化文本，不涉及任何输入框内容
     const text = buildOutput(paths);
-
     const ok = await copyTextToClipboard(text);
+
     if (ok) {
-      showToast(`✅ 已复制 ${paths.length} 个文件 (${text.length} 字符)`);
+      const galley = document.getElementById('galley');
+      galley.classList.add('is-copied');
+      clearTimeout(galley._flash);
+      galley._flash = setTimeout(() => galley.classList.remove('is-copied'), 620);
+      showToast(`已复制 ${paths.length} 个文件，共 ${text.length} 字符`);
     } else {
-      showToast('❌ 复制失败，请手动从右侧预览区复制');
+      showToast('复制失败，请在右侧输出区手动全选复制');
     }
     return ok;
   } catch (e) {
-    showToast('❌ 读取失败: ' + e.message);
+    showToast('读取失败：' + e.message);
     return false;
   }
 }
@@ -669,14 +1083,14 @@ function openBatchModal() {
   const modal = document.getElementById('batchModal');
   const input = document.getElementById('batchInput');
   const result = document.getElementById('batchResult');
-  result.classList.remove('show', 'ok', 'warn', 'error');
+  result.classList.remove('is-open', 'ok', 'warn', 'error');
   result.textContent = '';
-  modal.classList.add('show');
+  modal.classList.add('is-open');
   setTimeout(() => input.focus(), 50);
 }
 
 function closeBatchModal() {
-  document.getElementById('batchModal').classList.remove('show');
+  document.getElementById('batchModal').classList.remove('is-open');
 }
 
 function parseBatchInput(raw) {
@@ -696,15 +1110,16 @@ function showBatchResult(msg, type) {
   const el = document.getElementById('batchResult');
   el.textContent = msg;
   el.classList.remove('ok', 'warn', 'error');
-  el.classList.add('show', type);
+  el.classList.add('is-open', type);
 }
 
 async function doBatchImport() {
   const raw = document.getElementById('batchInput').value;
   const inputPaths = parseBatchInput(raw);
+
   if (inputPaths.length === 0) {
-    showBatchResult('⚠️ 请输入至少一个文件路径', 'error');
-    return { matched: 0, unmatched: [] };
+    showBatchResult('请输入至少一个文件路径。', 'error');
+    return { matched: [], unmatched: [] };
   }
 
   const allFiles = [];
@@ -715,6 +1130,7 @@ async function doBatchImport() {
   const matched = [];
   const unmatched = [];
   const seen = new Set();
+
   for (const p of inputPaths) {
     const key = normalizePath(p);
     if (!key || seen.has(key)) continue;
@@ -726,12 +1142,12 @@ async function doBatchImport() {
 
   if (matched.length === 0) {
     showBatchResult(
-      `❌ 未匹配到任何文件（共输入 ${inputPaths.length} 条）\n` +
+      `没匹配到任何文件，共输入 ${inputPaths.length} 条：\n` +
       unmatched.slice(0, 20).map(p => '  · ' + p).join('\n') +
       (unmatched.length > 20 ? `\n  ... 还有 ${unmatched.length - 20} 条` : ''),
       'error'
     );
-    return { matched: 0, unmatched };
+    return { matched: [], unmatched };
   }
 
   const toLoad = matched.filter(f => !state.fileCache.has(f.path));
@@ -747,21 +1163,20 @@ async function doBatchImport() {
         if (item.mtime) state.mtimeCache.set(item.path, item.mtime);
       }
     } catch (e) {
-      showBatchResult('❌ 读取文件内容失败：' + e.message, 'error');
-      return { matched: 0, unmatched };
+      showBatchResult('读取文件内容失败：' + e.message, 'error');
+      return { matched: [], unmatched };
     }
   }
 
   for (const f of matched) state.selected.add(f.path);
-
   renderTree();
   renderSelected();
 
-  let msg = `✅ 成功导入 ${matched.length} 个文件`;
+  let msg = `已导入 ${matched.length} 个文件`;
   let type = 'ok';
   if (unmatched.length > 0) {
     type = 'warn';
-    msg += `，${unmatched.length} 个未找到：\n` +
+    msg += `，${unmatched.length} 个没找到：\n` +
       unmatched.slice(0, 20).map(p => '  · ' + p).join('\n');
     if (unmatched.length > 20) msg += `\n  ... 还有 ${unmatched.length - 20} 条`;
   }
@@ -774,25 +1189,25 @@ async function doBatchImport() {
 document.getElementById('search').addEventListener('input', renderTree);
 
 document.getElementById('collapseBtn').onclick = () => {
+  const btn = document.getElementById('collapseBtn');
+  const dirs = [];
+  collectDirs(state.tree, dirs);
+
+  const allCollapsed = dirs.length > 0 && dirs.every(d => state.collapsed.has(d));
   state.collapsed.clear();
-  const collectDirs = (nodes) => {
-    for (const n of nodes) {
-      if (n.type === 'dir') {
-        state.collapsed.add(n.path);
-        collectDirs(n.children);
-      }
-    }
-  };
-  collectDirs(state.tree);
+  if (!allCollapsed) dirs.forEach(d => state.collapsed.add(d));
+  btn.textContent = allCollapsed ? '折叠全部' : '展开全部';
   renderTree();
 };
+
+document.getElementById('importBtn').onclick = () => openBatchModal();
 
 document.getElementById('clearBtn').onclick = () => {
   state.selected.clear();
   state.fileCache.clear();
   state.mtimeCache.clear();
   state.stale = false;
-  document.getElementById('staleBadge').classList.remove('show');
+  document.getElementById('staleBadge').classList.remove('is-on');
   renderTree();
   renderSelected();
 };
@@ -806,7 +1221,7 @@ document.getElementById('autoRefresh').onchange = (e) => {
   }
   if (e.target.checked) {
     state.autoTimer = setInterval(checkUpdates, 2000);
-    showToast('已开启自动刷新（每 2 秒）');
+    showToast('已开启自动刷新，每 2 秒检查一次');
   } else {
     showToast('已关闭自动刷新');
   }
@@ -815,22 +1230,26 @@ document.getElementById('autoRefresh').onchange = (e) => {
 document.getElementById('copyBtn').onclick = async () => {
   const btn = document.getElementById('copyBtn');
   const orig = btn.textContent;
-  btn.textContent = '读取中...';
   btn.disabled = true;
+  btn.textContent = '读取中…';
   try {
     await copyAll();
   } finally {
-    btn.textContent = orig;
     btn.disabled = false;
+    btn.textContent = orig;
   }
 };
 
-// ---- 批量导入快捷键 ----
+// ---- 批量导入弹层 ----
 document.getElementById('batchClose').onclick = closeBatchModal;
 document.getElementById('batchCancel').onclick = closeBatchModal;
 
+document.getElementById('batchModal').addEventListener('mousedown', (e) => {
+  if (e.target === e.currentTarget) closeBatchModal();
+});
+
 document.addEventListener('keydown', (e) => {
-  const modalOpen = document.getElementById('batchModal').classList.contains('show');
+  const modalOpen = document.getElementById('batchModal').classList.contains('is-open');
 
   if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && (e.key === 'i' || e.key === 'I')) {
     e.preventDefault();
@@ -854,9 +1273,7 @@ document.getElementById('batchImportOnly').onclick = async () => {
   btn.disabled = true;
   try {
     const { matched } = await doBatchImport();
-    if (matched.length > 0) {
-      setTimeout(() => closeBatchModal(), 500);
-    }
+    if (matched.length > 0) setTimeout(closeBatchModal, 500);
   } finally {
     btn.disabled = false;
   }
@@ -866,13 +1283,11 @@ document.getElementById('batchImport').onclick = async () => {
   const btn = document.getElementById('batchImport');
   const orig = btn.textContent;
   btn.disabled = true;
-  btn.textContent = '处理中...';
+  btn.textContent = '处理中…';
   try {
     const { matched } = await doBatchImport();
     if (matched.length > 0) {
-      // 关键：先关闭 modal，让焦点从 #batchInput 移走，再复制
       closeBatchModal();
-      // 等一帧，让 DOM 更新 + 焦点回到 body
       await new Promise(r => setTimeout(r, 50));
       await copyAll({ silent: true });
     }
