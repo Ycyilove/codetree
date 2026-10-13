@@ -58,8 +58,6 @@
 
   .hidden { display: none !important; }
 
-  /* ─────────────────────────── 按钮 ─────────────────────────── */
-
   .btn {
     font-family: var(--ui);
     font-size: 12.5px;
@@ -95,7 +93,13 @@
   .btn--danger { color: var(--red); border-color: #D9BAB4; }
   .btn--danger:hover { background: var(--red); border-color: var(--red); color: var(--sheet); }
 
-  /* ─────────────────────────── 左侧：索引 ─────────────────────────── */
+  .btn--ghost {
+    border-color: transparent;
+    color: var(--ink-2);
+    font-size: 12px;
+    padding: 6px 8px;
+  }
+  .btn--ghost:hover { background: var(--band); border-color: var(--rule); }
 
   .sidebar {
     width: 360px;
@@ -189,7 +193,6 @@
   .row.is-dir .name { font-weight: 600; }
   .row.is-result .name { flex: 0 1 auto; max-width: 42%; }
 
-  /* 勾选框 */
   .box {
     width: 12px;
     height: 12px;
@@ -217,6 +220,13 @@
   }
   .row.is-selected .name { font-weight: 600; }
 
+  .row.is-search-active {
+    background: var(--hl-pale) !important;
+    outline: 1px solid var(--hl-deep);
+    outline-offset: -1px;
+  }
+  .row.is-search-active .box { border-color: var(--ink); }
+
   .tree-empty {
     margin: 0;
     padding: 14px 12px;
@@ -224,8 +234,6 @@
     font-size: 12.5px;
     color: var(--ink-3);
   }
-
-  /* ─────────────────────────── 分隔条 ─────────────────────────── */
 
   .resizer {
     flex: 0 0 1px;
@@ -245,8 +253,6 @@
   }
   .resizer:hover,
   .resizer.is-dragging { background: var(--ink); }
-
-  /* ─────────────────────────── 右侧：清单 ─────────────────────────── */
 
   .galley-pane {
     flex: 1;
@@ -335,7 +341,6 @@
   }
   .toggle:hover input { border-color: var(--ink); }
 
-  /* 已选文件清单 */
   .picked {
     flex-shrink: 0;
     max-height: 128px;
@@ -375,7 +380,6 @@
   }
   .picked .item button:hover { color: var(--red); }
 
-  /* 输出区：带横格的纸张 */
   .galley {
     flex: 1;
     overflow: auto;
@@ -419,8 +423,6 @@
     color: var(--ink-3);
   }
 
-  /* ─────────────────────────── 提示条 ─────────────────────────── */
-
   .toast {
     position: fixed;
     left: 50%;
@@ -441,8 +443,6 @@
     transition: opacity .18s ease, transform .18s ease;
   }
   .toast.is-open { opacity: 1; transform: translate(-50%, 0); }
-
-  /* ─────────────────────────── 批量导入 ─────────────────────────── */
 
   .backdrop {
     display: none;
@@ -466,6 +466,8 @@
     border: 1px solid var(--ink);
     box-shadow: 0 22px 60px rgba(22, 32, 26, .34);
   }
+
+  .sheet--wide { width: 780px; }
 
   .sheet-head {
     flex-shrink: 0;
@@ -573,7 +575,65 @@
     border-top: 1px solid var(--rule);
   }
 
-  /* ─────────────────────────── 窄屏 ─────────────────────────── */
+  .guide-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .guide-list li {
+    display: flex;
+    gap: 12px;
+    font-family: var(--ui);
+    font-size: 13px;
+    line-height: 1.6;
+    color: var(--ink-2);
+  }
+  .guide-list .kbd {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .guide-list .kbd span {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1;
+    padding: 4px 7px;
+    background: var(--ink);
+    color: var(--sheet);
+    border: 1px solid var(--ink);
+  }
+  .guide-list .kbd span.light {
+    background: var(--sheet);
+    color: var(--ink);
+    border-color: var(--ink-3);
+  }
+  .guide-list .desc {
+    flex: 1;
+    min-width: 0;
+  }
+  .guide-list .desc b {
+    font-weight: 700;
+    color: var(--ink);
+  }
+
+  .guide-section-title {
+    margin: 6px 0 0;
+    font-family: var(--ui);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    border-bottom: 1px solid var(--rule);
+    padding-bottom: 4px;
+  }
+  .guide-section-title:first-child { margin-top: 0; }
 
   @media (max-width: 720px) {
     body { flex-direction: column; }
@@ -601,20 +661,19 @@
 </head>
 <body>
 
-<!-- 索引 -->
 <aside class="sidebar" id="sidebar">
   <div class="index-head">
     <input class="search" id="search" type="search" autocomplete="off"
            aria-label="搜索文件名或路径" placeholder="搜索文件名或路径">
     <button class="btn" id="collapseBtn" type="button">折叠全部</button>
     <button class="btn" id="importBtn" type="button" title="批量导入路径（Ctrl/Cmd + I）">批量导入</button>
+    <button class="btn btn--ghost" id="guideBtn" type="button" title="操作指引（Ctrl/Cmd + /）">?</button>
   </div>
   <div class="tree" id="tree" role="tree" aria-label="项目文件"></div>
 </aside>
 
 <div class="resizer" id="resizer" role="separator" aria-orientation="vertical" title="拖动调整宽度"></div>
 
-<!-- 清单 -->
 <main class="galley-pane">
   <div class="galley-head">
     <span class="status" id="status">还没有选文件</span>
@@ -640,7 +699,6 @@
 
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-<!-- 批量导入 -->
 <div class="backdrop" id="batchModal">
   <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="batchTitle">
     <div class="sheet-head">
@@ -652,7 +710,7 @@
         每行一个路径，相对于启动目录。也可以直接粘贴本工具输出的
         <code>====== path ======</code> 段落。空行和以 <code>#</code> 开头的行会被忽略，重复路径自动去重。
         <br>
-        快捷键：<code>Ctrl/Cmd + I</code> 打开，<code>Esc</code> 关闭，<code>Ctrl/Cmd + Enter</code> 导入并复制。
+        快捷键：<code>Ctrl/Cmd + I</code> 打开，<code>Esc</code> 取消输入框激活，再按一次关闭；<code>Ctrl/Cmd + Enter</code> 导入并复制。
       </p>
       <textarea id="batchInput" spellcheck="false" aria-label="文件路径列表" placeholder="src/features/tasks/TaskList.jsx
 src/features/tasks/TaskTimeline.jsx
@@ -667,6 +725,59 @@ src/features/tasks/TaskComposer.jsx"></textarea>
   </div>
 </div>
 
+<div class="backdrop" id="guideModal">
+  <div class="sheet sheet--wide" role="dialog" aria-modal="true" aria-labelledby="guideTitle">
+    <div class="sheet-head">
+      <h2 id="guideTitle">操作指引</h2>
+      <button class="x" id="guideClose" type="button" aria-label="关闭">×</button>
+    </div>
+    <div class="sheet-body">
+      <h3 class="guide-section-title">路径输入框</h3>
+      <ul class="guide-list">
+        <li>
+          <span class="kbd"><span>Enter</span></span>
+          <span class="desc">激活路径输入框（主界面搜索框 / 批量导入文本域），光标聚焦并全选内容。</span>
+        </li>
+        <li>
+          <span class="kbd"><span>Esc</span></span>
+          <span class="desc">取消输入框激活。<b>主界面</b>：若有搜索结果，第一次 Esc 清空搜索并收起列表（保持激活），再按一次取消激活。<b>批量导入</b>：第一次 Esc 取消激活，再按一次关闭弹层。</span>
+        </li>
+      </ul>
+
+      <h3 class="guide-section-title">搜索结果导航（主界面）</h3>
+      <ul class="guide-list">
+        <li>
+          <span class="kbd"><span>↑</span><span>↓</span></span>
+          <span class="desc">在搜索结果列表中上下移动高亮项。</span>
+        </li>
+        <li>
+          <span class="kbd"><span class="light">空格</span></span>
+          <span class="desc">选中 / 取消选中当前高亮的文件（支持多选），文件会出现在右侧清单并打勾。</span>
+        </li>
+      </ul>
+
+      <h3 class="guide-section-title">全局快捷键</h3>
+      <ul class="guide-list">
+        <li>
+          <span class="kbd"><span>Ctrl</span><span>/</span><span>Cmd</span><span>/</span></span>
+          <span class="desc">打开 / 关闭本操作指引。</span>
+        </li>
+        <li>
+          <span class="kbd"><span>Ctrl</span><span>I</span><span>Cmd</span><span>I</span></span>
+          <span class="desc">打开批量导入弹层。</span>
+        </li>
+        <li>
+          <span class="kbd"><span>Ctrl</span><span>Enter</span><span>Cmd</span><span>Enter</span></span>
+          <span class="desc">在批量导入弹层中导入并复制。</span>
+        </li>
+      </ul>
+    </div>
+    <div class="sheet-foot">
+      <button class="btn btn--solid" id="guideOk" type="button">知道了</button>
+    </div>
+  </div>
+</div>
+
 <script>
 const state = {
   tree: [],
@@ -675,10 +786,13 @@ const state = {
   mtimeCache: new Map(),
   collapsed: new Set(),
   stale: false,
-  autoTimer: null
+  autoTimer: null,
+  searchActiveIndex: -1,
+  searchResults: [],
+  searchActive: false,
+  batchActive: false
 };
 
-// ============ 工具函数 ============
 async function fetchJSON(url, opts) {
   const r = await fetch(url, opts);
   if (!r.ok) throw new Error(await r.text());
@@ -711,10 +825,6 @@ function normalizePath(p) {
     .trim();
 }
 
-/**
- * 可靠的复制函数。
- * 先把焦点从任何输入框移走，再写剪贴板，避免在批量导入弹层里复制到 textarea 的原文。
- */
 async function copyTextToClipboard(text) {
   try {
     const ae = document.activeElement;
@@ -751,7 +861,36 @@ async function copyTextToClipboard(text) {
   return ok;
 }
 
-// ============ 左右分隔条拖拽 ============
+function setSearchActive(active) {
+  const searchInput = document.getElementById('search');
+  if (active) {
+    state.searchActive = true;
+    searchInput.focus();
+    searchInput.select();
+    if (searchInput.value.trim()) {
+      state.searchActiveIndex = 0;
+      renderTree();
+    }
+  } else {
+    state.searchActive = false;
+    searchInput.blur();
+    state.searchActiveIndex = -1;
+    renderTree();
+  }
+}
+
+function setBatchActive(active) {
+  const batchInput = document.getElementById('batchInput');
+  if (active) {
+    state.batchActive = true;
+    batchInput.focus();
+    batchInput.select();
+  } else {
+    state.batchActive = false;
+    batchInput.blur();
+  }
+}
+
 function initResizer() {
   const resizer = document.getElementById('resizer');
   const sidebar = document.getElementById('sidebar');
@@ -788,14 +927,12 @@ function initResizer() {
   } catch (_) {}
 }
 
-// ============ 加载文件树 ============
 async function loadTree() {
   const data = await fetchJSON('/api/tree');
   state.tree = data.tree;
   renderTree();
 }
 
-// ============ 渲染文件树 ============
 function renderTree() {
   const container = document.getElementById('tree');
   const keyword = document.getElementById('search').value.trim().toLowerCase();
@@ -811,6 +948,8 @@ function renderTree() {
       empty.className = 'tree-empty';
       empty.textContent = '没有匹配的文件。';
       container.appendChild(empty);
+      state.searchResults = [];
+      state.searchActiveIndex = -1;
       return;
     }
 
@@ -821,8 +960,28 @@ function renderTree() {
       return a.path.localeCompare(b.path);
     });
 
-    filtered.slice(0, 500).forEach(f => container.appendChild(makeSearchResultRow(f)));
+    const displayList = filtered.slice(0, 500);
+    state.searchResults = displayList;
+
+    if (state.searchActiveIndex >= displayList.length) {
+      state.searchActiveIndex = displayList.length - 1;
+    }
+    if (state.searchActiveIndex < -1) state.searchActiveIndex = -1;
+
+    displayList.forEach((f, idx) => {
+      const row = makeSearchResultRow(f, idx === state.searchActiveIndex);
+      container.appendChild(row);
+    });
+
+    if (state.searchActiveIndex >= 0) {
+      const activeEl = container.querySelector('.is-search-active');
+      if (activeEl) {
+        activeEl.scrollIntoView({ block: 'nearest' });
+      }
+    }
   } else {
+    state.searchResults = [];
+    state.searchActiveIndex = -1;
     state.tree.forEach(node => container.appendChild(renderNode(node, 0)));
   }
 }
@@ -884,10 +1043,10 @@ function makeFileRow(file, fullPath, depth) {
   return el;
 }
 
-function makeSearchResultRow(file) {
+function makeSearchResultRow(file, isActive) {
   const sel = state.selected.has(file.path);
   const el = document.createElement('div');
-  el.className = 'row is-file is-result' + (sel ? ' is-selected' : '');
+  el.className = 'row is-file is-result' + (sel ? ' is-selected' : '') + (isActive ? ' is-search-active' : '');
   el.title = file.path;
   el.innerHTML =
     `<span class="box"></span>` +
@@ -898,7 +1057,6 @@ function makeSearchResultRow(file) {
   return el;
 }
 
-// ============ 选中 / 取消 ============
 async function toggleSelect(path, file) {
   if (state.selected.has(path)) {
     state.selected.delete(path);
@@ -918,7 +1076,6 @@ async function toggleSelect(path, file) {
   renderSelected();
 }
 
-// ============ 刷新 ============
 async function refreshSelected(silent = false) {
   const paths = [...state.selected];
   if (paths.length === 0) {
@@ -970,7 +1127,6 @@ async function checkUpdates() {
   } catch (e) {}
 }
 
-// ============ 渲染已选清单与输出 ============
 function renderSelected() {
   const count = state.selected.size;
 
@@ -1038,7 +1194,6 @@ function buildOutput(paths) {
   }).join('\n\n');
 }
 
-// ============ 复制全部 ============
 async function copyAll(opts = {}) {
   if (state.selected.size === 0) {
     if (!opts.silent) showToast('还没有选文件');
@@ -1078,7 +1233,6 @@ async function copyAll(opts = {}) {
   }
 }
 
-// ============ 批量导入 ============
 function openBatchModal() {
   const modal = document.getElementById('batchModal');
   const input = document.getElementById('batchInput');
@@ -1086,11 +1240,17 @@ function openBatchModal() {
   result.classList.remove('is-open', 'ok', 'warn', 'error');
   result.textContent = '';
   modal.classList.add('is-open');
-  setTimeout(() => input.focus(), 50);
+  setTimeout(() => {
+    input.focus();
+    input.select();
+    state.batchActive = true;
+  }, 50);
 }
 
 function closeBatchModal() {
   document.getElementById('batchModal').classList.remove('is-open');
+  state.batchActive = false;
+  document.getElementById('batchInput').blur();
 }
 
 function parseBatchInput(raw) {
@@ -1185,8 +1345,17 @@ async function doBatchImport() {
   return { matched, unmatched };
 }
 
-// ============ 事件绑定 ============
-document.getElementById('search').addEventListener('input', renderTree);
+function openGuideModal() {
+  document.getElementById('guideModal').classList.add('is-open');
+}
+function closeGuideModal() {
+  document.getElementById('guideModal').classList.remove('is-open');
+}
+
+document.getElementById('search').addEventListener('input', () => {
+  state.searchActiveIndex = 0;
+  renderTree();
+});
 
 document.getElementById('collapseBtn').onclick = () => {
   const btn = document.getElementById('collapseBtn');
@@ -1201,6 +1370,9 @@ document.getElementById('collapseBtn').onclick = () => {
 };
 
 document.getElementById('importBtn').onclick = () => openBatchModal();
+document.getElementById('guideBtn').onclick = () => openGuideModal();
+document.getElementById('guideClose').onclick = closeGuideModal;
+document.getElementById('guideOk').onclick = closeGuideModal;
 
 document.getElementById('clearBtn').onclick = () => {
   state.selected.clear();
@@ -1240,7 +1412,6 @@ document.getElementById('copyBtn').onclick = async () => {
   }
 };
 
-// ---- 批量导入弹层 ----
 document.getElementById('batchClose').onclick = closeBatchModal;
 document.getElementById('batchCancel').onclick = closeBatchModal;
 
@@ -1248,21 +1419,117 @@ document.getElementById('batchModal').addEventListener('mousedown', (e) => {
   if (e.target === e.currentTarget) closeBatchModal();
 });
 
-document.addEventListener('keydown', (e) => {
-  const modalOpen = document.getElementById('batchModal').classList.contains('is-open');
+document.getElementById('guideModal').addEventListener('mousedown', (e) => {
+  if (e.target === e.currentTarget) closeGuideModal();
+});
 
+// ============ 全局键盘事件（核心） ============
+document.addEventListener('keydown', (e) => {
+  const batchModalOpen = document.getElementById('batchModal').classList.contains('is-open');
+  const guideOpen = document.getElementById('guideModal').classList.contains('is-open');
+  const searchInput = document.getElementById('search');
+  const activeEl = document.activeElement;
+
+  // ---- 操作指引弹层：Esc 关闭 ----
+  if (guideOpen) {
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      closeGuideModal();
+    }
+    return;
+  }
+
+  // ---- 批量导入弹层内的 Escape ----
+  if (e.key === 'Escape' && batchModalOpen) {
+    e.preventDefault();
+    if (state.batchActive) {
+      setBatchActive(false);
+    } else {
+      closeBatchModal();
+    }
+    return;
+  }
+
+  // ---- 批量导入弹层内的 Enter ----
+  if (e.key === 'Enter' && batchModalOpen && !e.ctrlKey && !e.metaKey && !e.shiftKey) {
+    if (!state.batchActive) {
+      e.preventDefault();
+      setBatchActive(true);
+    }
+    return;
+  }
+
+  // ---- 主界面 Escape ----
+  if (e.key === 'Escape' && !batchModalOpen) {
+    e.preventDefault();
+    if (state.searchActive) {
+      const searchVal = searchInput.value.trim();
+      if (searchVal && state.searchResults.length > 0) {
+        searchInput.value = '';
+        state.searchActiveIndex = -1;
+        renderTree();
+        searchInput.focus();
+        searchInput.select();
+      } else {
+        setSearchActive(false);
+      }
+    }
+    return;
+  }
+
+  // ---- 主界面 Enter 键 ----
+  if (e.key === 'Enter' && !batchModalOpen && !e.ctrlKey && !e.metaKey && !e.shiftKey) {
+    if (activeEl !== searchInput || !state.searchActive) {
+      e.preventDefault();
+      setSearchActive(true);
+      return;
+    }
+    // 搜索框已激活时 Enter 不拦截，允许后续行为（但搜索框内 Enter 本身不做事）
+    return;
+  }
+
+  // ---- 搜索结果导航：上下键 ----
+  if ((e.key === 'ArrowDown' || e.key === 'ArrowUp') && state.searchActive && activeEl === searchInput) {
+    if (state.searchResults.length === 0) return;
+    e.preventDefault();
+    if (e.key === 'ArrowDown') {
+      state.searchActiveIndex = Math.min(state.searchActiveIndex + 1, state.searchResults.length - 1);
+    } else {
+      state.searchActiveIndex = Math.max(state.searchActiveIndex - 1, 0);
+    }
+    renderTree();
+    const activeItem = document.querySelector('.is-search-active');
+    if (activeItem) activeItem.scrollIntoView({ block: 'nearest' });
+    return;
+  }
+
+  // ---- 搜索结果导航：空格选中（仅当搜索框激活且焦点在搜索框） ----
+  if (e.key === ' ' && state.searchActive && activeEl === searchInput) {
+    e.preventDefault();
+    e.stopPropagation(); // 防止空格输入到搜索框
+    if (state.searchActiveIndex >= 0 && state.searchResults[state.searchActiveIndex]) {
+      const file = state.searchResults[state.searchActiveIndex];
+      toggleSelect(file.path, file);
+    }
+    return;
+  }
+
+  // ---- 全局快捷键 Ctrl/Cmd + I ----
   if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && (e.key === 'i' || e.key === 'I')) {
     e.preventDefault();
-    if (!modalOpen) openBatchModal();
+    if (!batchModalOpen) openBatchModal();
     return;
   }
 
-  if (e.key === 'Escape' && modalOpen) {
-    closeBatchModal();
+  // ---- 全局快捷键 Ctrl/Cmd + / ----
+  if ((e.ctrlKey || e.metaKey) && e.key === '/') {
+    e.preventDefault();
+    openGuideModal();
     return;
   }
 
-  if ((e.ctrlKey || e.metaKey) && e.key === 'Enter' && modalOpen) {
+  // ---- Ctrl/Cmd + Enter 导入并复制 ----
+  if ((e.ctrlKey || e.metaKey) && e.key === 'Enter' && batchModalOpen) {
     e.preventDefault();
     document.getElementById('batchImport').click();
   }
@@ -1297,7 +1564,6 @@ document.getElementById('batchImport').onclick = async () => {
   }
 };
 
-// ============ 启动 ============
 initResizer();
 loadTree();
 </script>
