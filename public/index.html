@@ -1,0 +1,3779 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="light">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>codetree · 项目结构与代码内容，一次复制给 AI</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --paper: #e9ebea;
+        --surface: #fcfdfc;
+        --sunken: #f2f4f3;
+        --ink: #12161a;
+        --ink-2: #545c61;
+        --ink-3: #878e93;
+        --line: #cdd2d0;
+        --line-soft: #e2e6e4;
+        --accent: #2050a8;
+        --accent-fg: #ffffff;
+        --mark: #fbf3c4;
+        --mark-hover: #f7eeae;
+        --ok: #2c6b47;
+        --warn: #8a6410;
+        --err: #a8352a;
+        --sans:
+          "Archivo", system-ui, -apple-system, "PingFang SC", "Microsoft YaHei",
+          sans-serif;
+        --mono:
+          "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas,
+          monospace;
+        --row-h: 24px;
+      }
+
+      [data-theme="dark"] {
+        --paper: #0f1215;
+        --surface: #171b20;
+        --sunken: #1f242a;
+        --ink: #e6eaed;
+        --ink-2: #98a1a8;
+        --ink-3: #666e75;
+        --line: #292f36;
+        --line-soft: #21262c;
+        --accent: #3a6bd0;
+        --accent-fg: #ffffff;
+        --mark: #39331a;
+        --mark-hover: #453d20;
+        --ok: #56c48e;
+        --warn: #dcaa42;
+        --err: #e56a5b;
+      }
+
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+      }
+
+      body {
+        font-family: var(--sans);
+        font-size: 13px;
+        line-height: 1.5;
+        color: var(--ink);
+        background: var(--paper);
+        overflow: hidden;
+        -webkit-font-smoothing: antialiased;
+        transition:
+          background 0.18s ease,
+          color 0.18s ease;
+      }
+
+      /* 皮肤层：固定在页面最底，由 body 半透明露出 */
+      body::before {
+        content: "";
+        position: fixed;
+        inset: 0;
+        z-index: 0;
+        pointer-events: none;
+        background-image: var(--skin-image, none);
+        background-size: cover;
+        background-position: center;
+        background-repeat: no-repeat;
+        opacity: var(--skin-opacity, 0);
+        transition: opacity 0.2s ease;
+      }
+
+      /* 皮肤开启时 body 自身不再铺满不透明底色 */
+      html[data-skin="on"] body {
+        background: transparent;
+      }
+
+      /* 皮肤开启时：所有面板半透明，让背景透出来 */
+      html[data-skin="on"] .app,
+      html[data-skin="on"] .topbar,
+      html[data-skin="on"] .sidebar,
+      html[data-skin="on"] .output,
+      html[data-skin="on"] .tabs,
+      html[data-skin="on"] .toolbar,
+      html[data-skin="on"] .stamp,
+      html[data-skin="on"] .filelist,
+      html[data-skin="on"] .sidebar-head,
+      html[data-skin="on"] .sidebar-foot,
+      html[data-skin="on"] .splitter {
+        background-color: rgba(252, 253, 252, 0.72);
+      }
+
+      html[data-skin="on"][data-theme="dark"] .app,
+      html[data-skin="on"][data-theme="dark"] .topbar,
+      html[data-skin="on"][data-theme="dark"] .sidebar,
+      html[data-skin="on"][data-theme="dark"] .output,
+      html[data-skin="on"][data-theme="dark"] .tabs,
+      html[data-skin="on"][data-theme="dark"] .toolbar,
+      html[data-skin="on"][data-theme="dark"] .stamp,
+      html[data-skin="on"][data-theme="dark"] .filelist,
+      html[data-skin="on"][data-theme="dark"] .sidebar-head,
+      html[data-skin="on"][data-theme="dark"] .sidebar-foot,
+      html[data-skin="on"][data-theme="dark"] .splitter {
+        background-color: rgba(23, 27, 32, 0.72);
+      }
+
+      /* 输出区：皮肤态下必须让开，否则会挡住背景 */
+      html[data-skin="on"] .out,
+      html[data-skin="on"] .out.is-placeholder {
+        background: rgba(252, 253, 252, 0.72);
+      }
+      html[data-skin="on"][data-theme="dark"] .out,
+      html[data-skin="on"][data-theme="dark"] .out.is-placeholder {
+        background: rgba(23, 27, 32, 0.72);
+      }
+
+      html[data-skin="on"] .row:hover {
+        background: rgba(242, 244, 243, 0.65);
+      }
+      html[data-skin="on"][data-theme="dark"] .row:hover {
+        background: rgba(31, 36, 42, 0.65);
+      }
+      html[data-skin="on"] .row.is-picked {
+        background: rgba(251, 243, 196, 0.78);
+      }
+      html[data-skin="on"][data-theme="dark"] .row.is-picked {
+        background: rgba(57, 51, 26, 0.78);
+      }
+
+      /* 皮肤态下弹窗保持不透明，保证可读性 */
+      html[data-skin="on"] .modal {
+        background: var(--surface);
+      }
+
+      :focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 1px;
+      }
+
+      ::selection {
+        background: var(--accent);
+        color: var(--accent-fg);
+      }
+
+      ::-webkit-scrollbar {
+        width: 10px;
+        height: 10px;
+      }
+      ::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: var(--line);
+        border: 3px solid transparent;
+        background-clip: content-box;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: var(--ink-3);
+        background-clip: content-box;
+      }
+      * {
+        scrollbar-width: thin;
+        scrollbar-color: var(--line) transparent;
+      }
+
+      .app {
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+        height: 100dvh;
+      }
+
+      .topbar {
+        flex: none;
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        padding: 10px 14px;
+        background: var(--surface);
+        border-bottom: 1px solid var(--line);
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        flex: none;
+        user-select: none;
+      }
+
+      .brand-mark {
+        width: 11px;
+        height: 11px;
+        background: var(--accent);
+        flex: none;
+      }
+
+      .brand-name {
+        font-size: 14px;
+        font-weight: 700;
+        letter-spacing: -0.025em;
+        font-family: var(--mono);
+      }
+
+      .pathbar {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        flex: 1 1 340px;
+        min-width: 0;
+        max-width: 680px;
+      }
+
+      .pathbar input {
+        flex: 1;
+        min-width: 0;
+        font-family: var(--mono);
+        font-size: 12.5px;
+        color: var(--ink);
+        background: var(--sunken);
+        border: 1px solid var(--line);
+        border-radius: 0;
+        padding: 7px 10px;
+        outline: none;
+        transition:
+          border-color 0.12s,
+          background 0.12s;
+      }
+      .pathbar input::placeholder {
+        color: var(--ink-3);
+      }
+      .pathbar input:focus {
+        border-color: var(--accent);
+        background: var(--surface);
+      }
+      .pathbar input:disabled {
+        color: var(--ink-3);
+        background: var(--paper);
+        border-style: dashed;
+        border-color: var(--line);
+        cursor: not-allowed;
+      }
+
+      .topbar-right {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        margin-left: auto;
+        flex: none;
+      }
+
+      .btn {
+        font-family: var(--sans);
+        font-size: 12.5px;
+        font-weight: 500;
+        line-height: 1;
+        padding: 8px 12px;
+        color: var(--ink);
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 0;
+        cursor: pointer;
+        white-space: nowrap;
+        transition:
+          background 0.12s,
+          border-color 0.12s,
+          color 0.12s;
+      }
+      .btn:hover {
+        border-color: var(--ink-3);
+      }
+      .btn:active {
+        transform: translateY(1px);
+      }
+      .btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+
+      .btn--solid {
+        background: var(--ink);
+        border-color: var(--ink);
+        color: var(--surface);
+      }
+      .btn--solid:hover {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: var(--accent-fg);
+      }
+      .btn--solid:disabled:hover {
+        background: var(--ink);
+        border-color: var(--ink);
+        color: var(--surface);
+      }
+
+      .btn--icon {
+        padding: 7px 9px;
+        font-size: 14px;
+        line-height: 1;
+      }
+
+      .mini {
+        font-family: var(--sans);
+        font-size: 11.5px;
+        font-weight: 500;
+        padding: 3px 8px;
+        color: var(--ink-2);
+        background: transparent;
+        border: 1px solid var(--line);
+        border-radius: 0;
+        cursor: pointer;
+        transition:
+          background 0.12s,
+          color 0.12s,
+          border-color 0.12s;
+      }
+      .mini:hover {
+        color: var(--ink);
+        background: var(--sunken);
+        border-color: var(--ink-3);
+      }
+
+      .main {
+        flex: 1;
+        min-height: 0;
+        display: flex;
+      }
+
+      .sidebar {
+        width: 340px;
+        min-width: 210px;
+        max-width: 60vw;
+        flex: none;
+        display: flex;
+        flex-direction: column;
+        background: var(--surface);
+        border-right: 1px solid var(--line);
+        overflow: hidden;
+      }
+
+      .sidebar-head {
+        flex: none;
+        padding: 9px 10px;
+        border-bottom: 1px solid var(--line-soft);
+      }
+
+      .search {
+        width: 100%;
+        font-family: var(--mono);
+        font-size: 12px;
+        color: var(--ink);
+        background: var(--sunken);
+        border: 1px solid var(--line);
+        border-radius: 0;
+        padding: 6px 9px;
+        outline: none;
+        transition:
+          border-color 0.12s,
+          background 0.12s;
+      }
+      .search::placeholder {
+        color: var(--ink-3);
+      }
+      .search:focus {
+        border-color: var(--accent);
+        background: var(--surface);
+      }
+      .search::-webkit-search-cancel-button {
+        cursor: pointer;
+      }
+
+      .tree {
+        flex: 1;
+        min-height: 0;
+        overflow-y: auto;
+        overflow-x: hidden;
+        padding: 5px 0 24px;
+        outline: none;
+      }
+      .tree.is-zone-focus {
+        box-shadow: inset 2px 0 0 var(--accent);
+      }
+
+      .row {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        height: var(--row-h);
+        padding-right: 10px;
+        cursor: pointer;
+        user-select: none;
+        position: relative;
+        transition: background 0.1s;
+      }
+      .row:hover {
+        background: var(--sunken);
+      }
+      .row:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: -2px;
+      }
+      .row.is-cursor {
+        outline: 2px solid var(--accent);
+        outline-offset: -2px;
+      }
+
+      .row.is-picked {
+        background: var(--mark);
+      }
+      .row.is-picked:hover {
+        background: var(--mark-hover);
+      }
+
+      .row.is-off {
+        opacity: 0.36;
+      }
+      .row.is-off .name {
+        text-decoration: line-through;
+      }
+      .row.is-off:hover {
+        opacity: 0.5;
+      }
+
+      .chev {
+        flex: none;
+        width: 12px;
+        height: 12px;
+        display: grid;
+        place-items: center;
+        position: relative;
+      }
+      .chev::before {
+        content: "";
+        width: 0;
+        height: 0;
+        border-left: 4px solid var(--ink-3);
+        border-top: 3.5px solid transparent;
+        border-bottom: 3.5px solid transparent;
+        transition: transform 0.12s;
+        transform-origin: 1px 50%;
+      }
+      .chev.is-open::before {
+        transform: rotate(90deg);
+      }
+      .chev.is-leaf::before {
+        display: none;
+      }
+
+      .chk {
+        flex: none;
+        width: 13px;
+        height: 13px;
+        border: 1px solid var(--ink-3);
+        background: var(--surface);
+        position: relative;
+        transition:
+          background 0.1s,
+          border-color 0.1s;
+      }
+      .row:hover .chk {
+        border-color: var(--ink-2);
+      }
+      .chk.is-on {
+        background: var(--surface);
+        border-color: var(--ink);
+      }
+      .chk.is-on::after {
+        content: "";
+        position: absolute;
+        left: 3px;
+        top: 0;
+        width: 4px;
+        height: 8px;
+        border-right: 2px solid var(--ink);
+        border-bottom: 2px solid var(--ink);
+        transform: rotate(40deg);
+        transform-origin: 50% 50%;
+      }
+      .chk.is-half::after {
+        content: "";
+        position: absolute;
+        left: 2px;
+        top: 5px;
+        width: 7px;
+        height: 2px;
+        background: var(--ink-3);
+      }
+
+      .name {
+        flex: 1 1 auto;
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        font-family: var(--mono);
+        font-size: 12px;
+        color: var(--ink-2);
+      }
+      .row.is-dir .name {
+        font-weight: 600;
+        color: var(--ink);
+      }
+      .row.is-picked .name {
+        color: var(--ink);
+      }
+
+      .path-hint {
+        flex: 1 1 auto;
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--ink-3);
+        margin-left: 2px;
+      }
+      .row.is-search .name {
+        flex: 0 1 auto;
+        max-width: 46%;
+      }
+
+      .size {
+        flex: none;
+        margin-left: auto;
+        font-family: var(--mono);
+        font-size: 10.5px;
+        color: var(--ink-3);
+        font-variant-numeric: tabular-nums;
+        opacity: 0.75;
+      }
+
+      .tree-empty {
+        margin: 0;
+        padding: 20px 14px;
+        font-size: 12.5px;
+        line-height: 1.8;
+        color: var(--ink-3);
+        text-align: center;
+      }
+
+      .sidebar-foot {
+        flex: none;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        padding: 7px 10px;
+        border-top: 1px solid var(--line-soft);
+        font-size: 11.5px;
+        color: var(--ink-3);
+        font-variant-numeric: tabular-nums;
+      }
+      .foot-actions {
+        display: flex;
+        gap: 5px;
+      }
+
+      .splitter {
+        flex: none;
+        width: 5px;
+        cursor: col-resize;
+        position: relative;
+        background: var(--paper);
+        transition: background 0.12s;
+      }
+      .splitter::after {
+        content: "";
+        position: absolute;
+        left: 50%;
+        top: 0;
+        bottom: 0;
+        width: 1px;
+        background: var(--line);
+        transform: translateX(-50%);
+        transition:
+          background 0.12s,
+          width 0.12s;
+      }
+      .splitter:hover::after,
+      .splitter.is-dragging::after {
+        background: var(--accent);
+        width: 2px;
+      }
+
+      .output {
+        flex: 1;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        background: var(--surface);
+        overflow: hidden;
+      }
+
+      .tabs {
+        flex: none;
+        display: flex;
+        align-items: stretch;
+        gap: 0;
+        padding: 0 12px;
+        background: var(--surface);
+        border-bottom: 1px solid var(--line);
+      }
+
+      .tab {
+        font-family: var(--sans);
+        font-size: 12.5px;
+        font-weight: 500;
+        color: var(--ink-3);
+        background: none;
+        border: none;
+        padding: 11px 13px;
+        cursor: pointer;
+        position: relative;
+        transition: color 0.12s;
+      }
+      .tab:hover {
+        color: var(--ink);
+      }
+      .tab.is-on {
+        color: var(--ink);
+        font-weight: 600;
+      }
+      .tab.is-on::after {
+        content: "";
+        position: absolute;
+        left: 11px;
+        right: 11px;
+        bottom: -1px;
+        height: 2px;
+        background: var(--ink);
+      }
+      /* Tab 键切换时，给标签一个轻量的键盘焦点提示 */
+      .tab.is-tab-focus {
+        color: var(--accent);
+      }
+      .tab:focus {
+        outline: none;
+      }
+      .tab:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: -3px;
+      }
+
+      .tabs-right {
+        margin-left: auto;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      /* 文件清单（文件内容 tab 时展示已选文件名） */
+      .filelist {
+        flex: none;
+        max-height: 96px;
+        overflow: auto;
+        padding: 7px 14px;
+        background: var(--surface);
+        border-bottom: 1px solid var(--line-soft);
+        font-family: var(--mono);
+        font-size: 11px;
+        line-height: 1.7;
+        color: var(--ink-2);
+        display: none;
+        white-space: pre-wrap;
+        word-break: break-all;
+      }
+      .filelist.is-on {
+        display: block;
+      }
+      .filelist .fcount {
+        display: block;
+        color: var(--ink-3);
+        font-size: 10.5px;
+        margin-bottom: 2px;
+      }
+      .filelist .fpath {
+        color: var(--ink);
+      }
+      .filelist .fpath + .fpath::before {
+        content: " · ";
+        color: var(--ink-3);
+      }
+
+      .stamp {
+        flex: none;
+        padding: 0 14px;
+        height: 0;
+        overflow: hidden;
+        font-family: var(--mono);
+        font-size: 10.5px;
+        color: var(--ink-3);
+        background: var(--surface);
+        border-bottom: 1px solid transparent;
+        transition:
+          height 0.18s ease,
+          padding 0.18s ease,
+          border-color 0.18s ease;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .stamp.is-on {
+        height: 24px;
+        border-bottom-color: var(--line-soft);
+      }
+
+      .toolbar {
+        flex: none;
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 8px 18px;
+        padding: 9px 14px;
+        background: var(--surface);
+        border-bottom: 1px solid var(--line-soft);
+        min-height: 44px;
+      }
+
+      .field {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        font-size: 11.5px;
+        color: var(--ink-3);
+      }
+      .field[hidden] {
+        display: none;
+      }
+
+      .field-lbl {
+        font-weight: 500;
+        letter-spacing: 0.01em;
+        flex: none;
+      }
+      .field-lbl b {
+        color: var(--ink);
+        font-weight: 600;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .seg {
+        display: inline-flex;
+        border: 1px solid var(--line);
+      }
+      .seg button {
+        font-family: var(--sans);
+        font-size: 11.5px;
+        font-weight: 500;
+        color: var(--ink-2);
+        background: transparent;
+        border: none;
+        border-right: 1px solid var(--line);
+        padding: 4px 10px;
+        cursor: pointer;
+        white-space: nowrap;
+        transition:
+          background 0.1s,
+          color 0.1s;
+      }
+      .seg button:last-child {
+        border-right: none;
+      }
+      .seg button:hover {
+        color: var(--ink);
+        background: var(--sunken);
+      }
+      .seg button.is-on {
+        background: var(--ink);
+        color: var(--surface);
+      }
+      .seg button:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: -2px;
+      }
+
+      .out {
+        flex: 1;
+        min-height: 0;
+        margin: 0;
+        padding: 16px 18px 72px;
+        overflow: auto;
+        font-family: var(--mono);
+        font-size: 12.5px;
+        line-height: 1.72;
+        white-space: pre;
+        tab-size: 2;
+        color: var(--ink);
+        background: var(--surface);
+        outline: none;
+      }
+      .out.is-zone-focus {
+        box-shadow: inset 2px 0 0 var(--accent);
+      }
+      .out.is-placeholder {
+        color: var(--ink-3);
+        white-space: pre-wrap;
+        font-family: var(--sans);
+        font-size: 13px;
+        line-height: 1.9;
+      }
+
+      .toast {
+        position: fixed;
+        left: 50%;
+        bottom: 26px;
+        z-index: 600;
+        max-width: min(84vw, 620px);
+        padding: 9px 18px;
+        background: var(--ink);
+        color: var(--surface);
+        font-size: 12.5px;
+        font-weight: 500;
+        text-align: center;
+        opacity: 0;
+        pointer-events: none;
+        transform: translate(-50%, 8px);
+        transition:
+          opacity 0.18s ease,
+          transform 0.18s ease;
+      }
+      .toast.is-open {
+        opacity: 1;
+        transform: translate(-50%, 0);
+      }
+
+      body.is-dropping::after {
+        content: "松开，读取这个文件夹";
+        position: fixed;
+        inset: 0;
+        z-index: 300;
+        display: grid;
+        place-items: center;
+        background: color-mix(in srgb, var(--paper) 94%, transparent);
+        font-family: var(--mono);
+        font-size: 15px;
+        color: var(--ink);
+      }
+
+      #fileInput {
+        position: absolute;
+        width: 0;
+        height: 0;
+        opacity: 0;
+        pointer-events: none;
+      }
+
+      .backdrop {
+        position: fixed;
+        inset: 0;
+        z-index: 500;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        padding: 22px;
+        background: color-mix(in srgb, var(--ink) 46%, transparent);
+      }
+      .backdrop.is-open {
+        display: flex;
+      }
+
+      .modal {
+        width: 680px;
+        max-width: 100%;
+        max-height: 86vh;
+        display: flex;
+        flex-direction: column;
+        background: var(--surface);
+        border: 1px solid var(--line);
+        box-shadow: 0 24px 64px color-mix(in srgb, var(--ink) 34%, transparent);
+      }
+      .modal--wide {
+        width: 760px;
+      }
+
+      .modal-head {
+        flex: none;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 13px 16px;
+        border-bottom: 1px solid var(--line-soft);
+      }
+      .modal-head h2 {
+        margin: 0;
+        font-size: 14px;
+        font-weight: 700;
+        letter-spacing: -0.01em;
+      }
+
+      .modal-body {
+        flex: 1;
+        min-height: 0;
+        overflow: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        padding: 14px 16px;
+      }
+
+      .modal-hint {
+        margin: 0;
+        font-size: 12px;
+        line-height: 1.75;
+        color: var(--ink-2);
+      }
+      .modal-hint code {
+        font-family: var(--mono);
+        font-size: 11px;
+        background: var(--sunken);
+        padding: 1px 4px;
+      }
+
+      .modal-body textarea {
+        width: 100%;
+        height: 220px;
+        resize: vertical;
+        font-family: var(--mono);
+        font-size: 12.5px;
+        line-height: 1.65;
+        color: var(--ink);
+        background: var(--sunken);
+        border: 1px solid var(--line);
+        border-radius: 0;
+        padding: 10px 12px;
+        outline: none;
+        transition:
+          border-color 0.12s,
+          background 0.12s;
+      }
+      .modal-body textarea::placeholder {
+        color: var(--ink-3);
+      }
+      .modal-body textarea:focus {
+        border-color: var(--accent);
+        background: var(--surface);
+      }
+
+      .modal-result {
+        display: none;
+        max-height: 150px;
+        overflow: auto;
+        padding: 9px 12px;
+        font-family: var(--mono);
+        font-size: 11.5px;
+        line-height: 1.7;
+        white-space: pre-wrap;
+        background: var(--sunken);
+        border-left: 3px solid var(--ink-3);
+      }
+      .modal-result.is-open {
+        display: block;
+      }
+      .modal-result.ok {
+        border-left-color: var(--ok);
+        color: var(--ok);
+      }
+      .modal-result.warn {
+        border-left-color: var(--warn);
+        color: var(--warn);
+      }
+      .modal-result.err {
+        border-left-color: var(--err);
+        color: var(--err);
+      }
+
+      .modal-foot {
+        flex: none;
+        display: flex;
+        justify-content: flex-end;
+        gap: 8px;
+        padding: 12px 16px;
+        border-top: 1px solid var(--line-soft);
+      }
+
+      .skin-row {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        font-size: 12.5px;
+        color: var(--ink-2);
+      }
+      .skin-row input[type="range"] {
+        flex: 1;
+        min-width: 0;
+        accent-color: var(--accent);
+      }
+      .skin-preview {
+        height: 120px;
+        border: 1px dashed var(--line);
+        background-size: cover;
+        background-position: center;
+        display: grid;
+        place-items: center;
+        font-size: 12px;
+        color: var(--ink-3);
+      }
+
+      .guide-section-title {
+        margin: 6px 0 0;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: var(--ink-3);
+        border-bottom: 1px solid var(--line-soft);
+        padding-bottom: 5px;
+      }
+      .guide-section-title:first-child {
+        margin-top: 0;
+      }
+
+      .guide-list {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+        display: flex;
+        flex-direction: column;
+        gap: 11px;
+      }
+      .guide-list li {
+        display: flex;
+        gap: 12px;
+        align-items: flex-start;
+        font-size: 12.5px;
+        line-height: 1.6;
+        color: var(--ink-2);
+      }
+      .guide-list .kbd {
+        flex: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 3px;
+        min-width: 108px;
+        flex-wrap: wrap;
+      }
+      .guide-list .kbd span {
+        display: inline-block;
+        font-family: var(--mono);
+        font-size: 10.5px;
+        font-weight: 600;
+        line-height: 1;
+        padding: 4px 7px;
+        background: var(--ink);
+        color: var(--surface);
+        border: 1px solid var(--ink);
+      }
+      .guide-list .kbd span.light {
+        background: var(--surface);
+        color: var(--ink);
+        border-color: var(--line);
+      }
+      .guide-list .desc {
+        flex: 1;
+        min-width: 0;
+      }
+      .guide-list .desc b {
+        font-weight: 700;
+        color: var(--ink);
+      }
+
+      @media (max-width: 760px) {
+        .main {
+          flex-direction: column;
+        }
+        .sidebar {
+          width: 100% !important;
+          max-width: none;
+          height: 42vh;
+          min-height: 180px;
+          border-right: none;
+          border-bottom: 1px solid var(--line);
+        }
+        .splitter {
+          display: none;
+        }
+        .pathbar {
+          flex-basis: 100%;
+          order: 3;
+          max-width: none;
+        }
+        .topbar {
+          flex-wrap: wrap;
+          gap: 10px;
+        }
+        .topbar-right {
+          margin-left: auto;
+        }
+        .out {
+          font-size: 12px;
+          padding: 14px 12px 60px;
+        }
+        .toolbar {
+          gap: 8px 12px;
+          padding: 8px 12px;
+        }
+        .guide-list .kbd {
+          min-width: 90px;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+          animation-duration: 0.001ms !important;
+          transition-duration: 0.001ms !important;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <header class="topbar">
+        <div class="brand">
+          <span class="brand-mark" aria-hidden="true"></span>
+          <span class="brand-name">codetree</span>
+        </div>
+
+        <div class="pathbar">
+          <input
+            id="pathInput"
+            type="text"
+            spellcheck="false"
+            autocomplete="off"
+            placeholder="输入文件夹路径，回车读取（支持任意位置）"
+            aria-label="项目文件夹路径"
+          />
+          <button class="btn" id="loadBtn" type="button">读取</button>
+        </div>
+
+        <div class="topbar-right">
+          <button
+            class="btn"
+            id="importBtn"
+            type="button"
+            title="批量导入路径（Ctrl/Cmd + I）"
+          >
+            批量导入
+          </button>
+          <button class="btn" id="skinBtn" type="button" title="设置背景皮肤">
+            皮肤
+          </button>
+          <button class="btn" id="pickBtn" type="button">选择文件夹</button>
+          <button
+            class="btn btn--icon"
+            id="guideBtn"
+            type="button"
+            title="操作指引（Ctrl/Cmd + /）"
+            aria-label="操作指引"
+          >
+            ?
+          </button>
+          <button
+            class="btn btn--icon"
+            id="themeBtn"
+            type="button"
+            title="切换深色 / 浅色"
+            aria-label="切换深色 / 浅色"
+          >
+            ◐
+          </button>
+        </div>
+      </header>
+
+      <div class="main">
+        <aside class="sidebar" id="sidebar">
+          <div class="sidebar-head">
+            <input
+              class="search"
+              id="searchInput"
+              type="search"
+              autocomplete="off"
+              placeholder="搜索文件名或路径"
+              aria-label="搜索文件名或路径"
+            />
+          </div>
+
+          <div
+            class="tree"
+            id="tree"
+            role="tree"
+            aria-label="项目文件树"
+            tabindex="0"
+          ></div>
+
+          <div class="sidebar-foot">
+            <span id="selInfo">未载入</span>
+            <div class="foot-actions">
+              <button class="mini" id="selectAllBtn" type="button">全选</button>
+              <button class="mini" id="clearSelBtn" type="button">清空</button>
+            </div>
+          </div>
+        </aside>
+
+        <div
+          class="splitter"
+          id="splitter"
+          role="separator"
+          aria-orientation="vertical"
+        ></div>
+
+        <section class="output">
+          <div class="tabs" id="tablist" role="tablist">
+            <button
+              class="tab is-on"
+              data-tab="all"
+              role="tab"
+              aria-selected="true"
+            >
+              全部
+            </button>
+            <button
+              class="tab"
+              data-tab="tree"
+              role="tab"
+              aria-selected="false"
+            >
+              目录结构
+            </button>
+            <button
+              class="tab"
+              data-tab="files"
+              role="tab"
+              aria-selected="false"
+            >
+              文件内容
+            </button>
+            <div class="tabs-right">
+              <button class="btn btn--solid" id="copyBtn" type="button">
+                复制
+              </button>
+            </div>
+          </div>
+
+          <div class="filelist" id="filelist"></div>
+
+          <div class="stamp" id="stamp"></div>
+
+          <div class="toolbar" id="toolbar">
+            <div class="field" data-show="tree">
+              <span class="field-lbl">格式</span>
+              <div class="seg" data-group="format">
+                <button data-val="text" class="is-on" type="button">
+                  目录树
+                </button>
+                <button data-val="paths" type="button">路径列表</button>
+                <button data-val="json" type="button">JSON</button>
+              </div>
+            </div>
+
+            <div class="field" data-show="tree">
+              <span class="field-lbl">范围</span>
+              <div class="seg" data-group="scope">
+                <button data-val="slim" class="is-on" type="button">
+                  精简
+                </button>
+                <button data-val="all" type="button">全部</button>
+              </div>
+            </div>
+
+            <div class="field" data-show="tree">
+              <span class="field-lbl">深度</span>
+              <div class="seg" data-group="depth">
+                <button data-val="0" class="is-on" type="button">全部</button>
+                <button data-val="2" type="button">2</button>
+                <button data-val="3" type="button">3</button>
+                <button data-val="5" type="button">5</button>
+              </div>
+            </div>
+
+            <div class="field" data-show="files">
+              <span class="field-lbl">已选 <b id="fileCount">0</b> 个文件</span>
+            </div>
+          </div>
+
+          <pre class="out is-placeholder" id="out" tabindex="0"></pre>
+        </section>
+      </div>
+    </div>
+
+    <input type="file" id="fileInput" webkitdirectory directory multiple />
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+    <div class="backdrop" id="importModal">
+      <div
+        class="modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="importTitle"
+      >
+        <div class="modal-head">
+          <h2 id="importTitle">批量导入文件</h2>
+          <button
+            class="btn btn--icon"
+            id="importClose"
+            type="button"
+            aria-label="关闭"
+          >
+            ×
+          </button>
+        </div>
+        <div class="modal-body">
+          <p class="modal-hint">
+            每行一个路径。可以是相对当前根目录的相对路径，也可以是本工具输出的
+            <code>====== path ======</code> 段落。 空行、<code>#</code>
+            开头的行忽略；重复自动去重。
+            <br />
+            <code>Ctrl/Cmd + Enter</code> 导入，<code>Esc</code> 关闭。
+          </p>
+          <textarea
+            id="importInput"
+            spellcheck="false"
+            placeholder="src/features/tasks/TaskList.jsx&#10;src/features/tasks/TaskTimeline.jsx&#10;ai_bid_system/.env"
+          ></textarea>
+          <div class="modal-result" id="importResult"></div>
+        </div>
+        <div class="modal-foot">
+          <button class="btn" id="importCancel" type="button">取消</button>
+          <button class="btn btn--solid" id="importOnly" type="button">
+            导入
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="backdrop" id="skinModal">
+      <div
+        class="modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="skinTitle"
+      >
+        <div class="modal-head">
+          <h2 id="skinTitle">背景皮肤</h2>
+          <button
+            class="btn btn--icon"
+            id="skinClose"
+            type="button"
+            aria-label="关闭"
+          >
+            ×
+          </button>
+        </div>
+        <div class="modal-body">
+          <p class="modal-hint">
+            选一张图片作为页面透明背景。图片只存在浏览器本地，不会上传。
+          </p>
+          <div class="skin-preview" id="skinPreview">还没有设置背景</div>
+          <div class="skin-row">
+            <span>透明度</span>
+            <input type="range" id="skinOpacity" min="0" max="100" value="35" />
+            <span
+              id="skinOpacityVal"
+              style="
+                font-family: var(--mono);
+                min-width: 3ch;
+                text-align: right;
+              "
+              >35%</span
+            >
+          </div>
+        </div>
+        <div class="modal-foot">
+          <button class="btn" id="skinClear" type="button">移除背景</button>
+          <button class="btn" id="skinPick" type="button">选择图片</button>
+          <button class="btn btn--solid" id="skinDone" type="button">
+            完成
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="backdrop" id="guideModal">
+      <div
+        class="modal modal--wide"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="guideTitle"
+      >
+        <div class="modal-head">
+          <h2 id="guideTitle">操作指引</h2>
+          <button
+            class="btn btn--icon"
+            id="guideClose"
+            type="button"
+            aria-label="关闭"
+          >
+            ×
+          </button>
+        </div>
+        <div class="modal-body">
+          <h3 class="guide-section-title">输入框激活</h3>
+          <ul class="guide-list">
+            <li>
+              <span class="kbd"><span>Enter</span></span>
+              <span class="desc">
+                焦点不在任何输入框时，<b>激活搜索框</b>并全选内容——这是切换工作目录后
+                最常用的入口，用于快速定位文件。
+              </span>
+            </li>
+            <li>
+              <span class="kbd"><span class="light">/</span></span>
+              <span class="desc">
+                非输入状态下按
+                <b>斜杠键</b>，激活<b>路径输入框</b>，用于输入绝对路径
+                切换整个项目根目录。
+              </span>
+            </li>
+            <li>
+              <span class="kbd"
+                ><span>Ctrl</span><span>K</span><span class="light">Cmd</span
+                ><span class="light">K</span></span
+              >
+              <span class="desc">
+                与
+                <code>/</code>
+                等效，激活路径输入框。跨平台更一致，不依赖键盘布局。
+              </span>
+            </li>
+            <li>
+              <span class="kbd"><span>Esc</span></span>
+              <span class="desc">
+                <b>取消输入框激活</b>。若搜索框有内容，第一次 Esc
+                先清空搜索，再按一次取消激活。 弹窗打开时，Esc <b>关闭弹窗</b>。
+              </span>
+            </li>
+            <li>
+              <span class="kbd"
+                ><span>Enter</span><span class="light">在路径框</span></span
+              >
+              <span class="desc">
+                焦点已在路径框时，<b>读取该目录</b>。焦点在树中某一行时，<b
+                  >切换该行的选中 / 排除</b
+                >。
+              </span>
+            </li>
+          </ul>
+
+          <h3 class="guide-section-title">键盘区域切换</h3>
+          <ul class="guide-list">
+            <li>
+              <span class="kbd"><span>←</span><span>→</span></span>
+              <span class="desc">
+                <b>←</b> 把键盘归属切到左侧 <b>目录文件列表</b>；
+                <b>→</b> 切到右侧 <b>输出区</b>。
+                当前归属区域左侧会显示一条蓝色内边线。 光标停在目录行上时，<b
+                  >← →</b
+                >
+                不切换区域（留给 <b>P</b> 用于折叠判断）。
+              </span>
+            </li>
+            <li>
+              <span class="kbd"
+                ><span>Tab</span><span class="light">Shift+Tab</span></span
+              >
+              <span class="desc">
+                循环切换顶部三个标签：<b>全部 → 目录结构 → 文件内容</b>。
+                <b>Shift + Tab</b> 反向切换。
+              </span>
+            </li>
+            <li>
+              <span class="kbd"><span class="light">点击</span></span>
+              <span class="desc"> 用鼠标点击任一区域，键盘归属同步切换。 </span>
+            </li>
+            <li>
+              <span class="kbd"><span class="light">默认</span></span>
+              <span class="desc">载入项目后默认归属 <b>目录文件列表</b>。</span>
+            </li>
+          </ul>
+
+          <h3 class="guide-section-title">方向键与翻页</h3>
+          <ul class="guide-list">
+            <li>
+              <span class="kbd"><span>↑</span><span>↓</span></span>
+              <span class="desc">
+                归属
+                <b>目录列表</b>
+                时：在可见项之间上下移动光标（搜索状态下在结果里移动）。 归属
+                <b>输出区</b> 时：原生上下滚动。
+              </span>
+            </li>
+            <li>
+              <span class="kbd"
+                ><span class="light">PgUp</span
+                ><span class="light">PgDn</span></span
+              >
+              <span class="desc">
+                归属列表时按页移动光标；归属输出区时按页滚动。
+              </span>
+            </li>
+            <li>
+              <span class="kbd"
+                ><span class="light">Home</span
+                ><span class="light">End</span></span
+              >
+              <span class="desc">
+                归属列表时跳到首 / 末项；归属输出区时滚到顶部 / 底部。
+              </span>
+            </li>
+            <li>
+              <span class="kbd"><span class="light">空格</span></span>
+              <span class="desc">
+                归属列表时，切换当前光标的选中状态。 文件 → 加入 /
+                移出内容清单； 目录 → 从目录结构中排除 / 恢复。
+                被排除的目录仍可被选中，光标留在原地；它的所有子目录与文件都不再进入选中范围，
+                直到重新勾选。
+              </span>
+            </li>
+          </ul>
+
+          <h3 class="guide-section-title">折叠 / 展开</h3>
+          <ul class="guide-list">
+            <li>
+              <span class="kbd"><span>P</span></span>
+              <span class="desc">
+                归属列表且光标在目录行时，折叠该目录；已折叠时展开。不区分大小写。
+              </span>
+            </li>
+            <li>
+              <span class="kbd"
+                ><span class="light">点击</span
+                ><span class="light">三角</span></span
+              >
+              <span class="desc"
+                >点击目录行左侧的三角箭头，同样折叠 / 展开。</span
+              >
+            </li>
+          </ul>
+
+          <h3 class="guide-section-title">搜索</h3>
+          <ul class="guide-list">
+            <li>
+              <span class="kbd"><span>Enter</span></span>
+              <span class="desc">
+                激活搜索框开始输入。在搜索框里按 <b>↑ ↓ PgUp PgDn</b>
+                会直接把键盘归属交给结果列表，并定位到第一个结果。
+              </span>
+            </li>
+            <li>
+              <span class="kbd"><span>Esc</span></span>
+              <span class="desc">清空搜索并返回完整树。</span>
+            </li>
+          </ul>
+
+          <h3 class="guide-section-title">复制</h3>
+          <ul class="guide-list">
+            <li>
+              <span class="kbd"
+                ><span>Ctrl</span><span>C</span><span class="light">Cmd</span
+                ><span class="light">C</span></span
+              >
+              <span class="desc">
+                归属
+                <b>目录列表</b> 且光标在某一行时：复制该行相对根目录的路径。
+                归属 <b>输出区</b> 时：复制输出区全部内容。
+                焦点在输入框内时不拦截，保留原生复制。
+              </span>
+            </li>
+            <li>
+              <span class="kbd"
+                ><span>Ctrl</span><span>Enter</span
+                ><span class="light">Cmd</span
+                ><span class="light">Enter</span></span
+              >
+              <span class="desc">
+                与点「复制」按钮等效。导入弹窗打开时，为<b>导入</b>。
+              </span>
+            </li>
+          </ul>
+
+          <h3 class="guide-section-title">标签与文件清单</h3>
+          <ul class="guide-list">
+            <li>
+              <span class="kbd"
+                ><span class="light">全部</span><span class="light">/</span
+                ><span class="light">目录结构</span><span class="light">/</span
+                ><span class="light">文件内容</span></span
+              >
+              <span class="desc">
+                三个标签分别输出：目录结构 + 文件内容、仅目录结构、仅文件内容。
+              </span>
+            </li>
+            <li>
+              <span class="kbd"><span class="light">文件内容</span></span>
+              <span class="desc">
+                切到该标签时，输出区顶部会列出所有已选文件的相对路径，便于核对。
+              </span>
+            </li>
+          </ul>
+
+          <h3 class="guide-section-title">全局快捷键</h3>
+          <ul class="guide-list">
+            <li>
+              <span class="kbd"
+                ><span>Ctrl</span><span>I</span><span class="light">Cmd</span
+                ><span class="light">I</span></span
+              >
+              <span class="desc">打开 <b>批量导入文件</b> 弹窗。</span>
+            </li>
+            <li>
+              <span class="kbd"
+                ><span>Ctrl</span><span>/</span><span class="light">Cmd</span
+                ><span class="light">/</span></span
+              >
+              <span class="desc">打开 / 关闭本操作指引。</span>
+            </li>
+          </ul>
+
+          <h3 class="guide-section-title">读取方式</h3>
+          <ul class="guide-list">
+            <li>
+              <span class="kbd"><span class="light">拖入</span></span>
+              <span class="desc"
+                >把项目文件夹拖到窗口里，直接读取（本地，不需服务器）。</span
+              >
+            </li>
+            <li>
+              <span class="kbd"><span class="light">选择</span></span>
+              <span class="desc"
+                >点「选择文件夹」，用系统对话框选取（本地，不需服务器）。</span
+              >
+            </li>
+            <li>
+              <span class="kbd"><span class="light">路径</span></span>
+              <span class="desc">
+                按 <code>/</code> 或 <code>Ctrl/Cmd + K</code> 激活路径框，
+                输入绝对路径回车。<b>需要 Node 服务器</b>（<code
+                  >npm start</code
+                >
+                后访问 <code>http://localhost:3000</code>）。支持任意位置，
+                <code>~</code> 展开为用户主目录。
+              </span>
+            </li>
+          </ul>
+        </div>
+        <div class="modal-foot">
+          <button class="btn btn--solid" id="guideOk" type="button">
+            知道了
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      (() => {
+        "use strict";
+
+        const IGNORE_DIRS = new Set([
+          "node_modules",
+          "bower_components",
+          "vendor",
+          "Pods",
+          ".git",
+          ".svn",
+          ".hg",
+          "dist",
+          "build",
+          ".next",
+          ".nuxt",
+          ".svelte-kit",
+          ".output",
+          ".cache",
+          ".parcel-cache",
+          ".turbo",
+          ".vite",
+          "coverage",
+          ".nyc_output",
+          "__pycache__",
+          ".pytest_cache",
+          ".mypy_cache",
+          ".ruff_cache",
+          ".venv",
+          "venv",
+          ".tox",
+          "target",
+          ".gradle",
+          ".dart_tool",
+          ".idea",
+          ".vs",
+          "DerivedData",
+        ]);
+
+        const IGNORE_FILES = new Set([
+          ".DS_Store",
+          "Thumbs.db",
+          "desktop.ini",
+          "package-lock.json",
+          "yarn.lock",
+          "pnpm-lock.yaml",
+          "npm-shrinkwrap.json",
+          "Cargo.lock",
+          "poetry.lock",
+          "Pipfile.lock",
+          "composer.lock",
+          "Gemfile.lock",
+        ]);
+
+        const MAX_LOCAL_FILES = 20000;
+        const MAX_RENDER_NODES = 12000;
+
+        const state = {
+          mode: null,
+          root: "",
+          rootName: "",
+          tree: [],
+          localFiles: new Map(),
+          picked: new Set(),
+          excluded: new Set(),
+          collapsed: new Set(),
+          contentCache: new Map(),
+          search: "",
+          tab: "all",
+          format: "text",
+          scope: "slim",
+          depth: 0,
+          output: "",
+          cursorPath: null,
+          cursorList: [],
+          skinOpacity: 0.35,
+          focusZone: "tree", // 'tree' | 'output' | 'tabs'
+        };
+
+        const $ = (s, r = document) => r.querySelector(s);
+        const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
+
+        const el = {
+          sidebar: $("#sidebar"),
+          splitter: $("#splitter"),
+          tree: $("#tree"),
+          search: $("#searchInput"),
+          selInfo: $("#selInfo"),
+          selectAll: $("#selectAllBtn"),
+          clearSel: $("#clearSelBtn"),
+          pathInput: $("#pathInput"),
+          loadBtn: $("#loadBtn"),
+          pickBtn: $("#pickBtn"),
+          themeBtn: $("#themeBtn"),
+          fileInput: $("#fileInput"),
+          tabs: $$(".tab"),
+          tablist: $("#tablist"),
+          toolbar: $("#toolbar"),
+          fileCount: $("#fileCount"),
+          filelist: $("#filelist"),
+          out: $("#out"),
+          copyBtn: $("#copyBtn"),
+          toast: $("#toast"),
+
+          importBtn: $("#importBtn"),
+          importModal: $("#importModal"),
+          importInput: $("#importInput"),
+          importResult: $("#importResult"),
+
+          skinBtn: $("#skinBtn"),
+          skinModal: $("#skinModal"),
+          skinPreview: $("#skinPreview"),
+          skinOpacity: $("#skinOpacity"),
+          skinOpacityVal: $("#skinOpacityVal"),
+
+          guideBtn: $("#guideBtn"),
+          guideModal: $("#guideModal"),
+        };
+
+        function fmtSize(n) {
+          if (!n) return "0";
+          if (n < 1024) return n + "B";
+          if (n < 1048576) return (n / 1024).toFixed(1) + "K";
+          if (n < 1073741824) return (n / 1048576).toFixed(1) + "M";
+          return (n / 1073741824).toFixed(2) + "G";
+        }
+
+        let toastTimer;
+        function toast(msg) {
+          el.toast.textContent = msg;
+          el.toast.classList.add("is-open");
+          clearTimeout(toastTimer);
+          toastTimer = setTimeout(
+            () => el.toast.classList.remove("is-open"),
+            2000,
+          );
+        }
+
+        function nowTime() {
+          return new Date().toLocaleTimeString("zh-CN", { hour12: false });
+        }
+
+        async function copyText(text) {
+          if (!text) return false;
+
+          try {
+            const ae = document.activeElement;
+            if (ae && typeof ae.blur === "function") {
+              if (
+                typeof ae.setSelectionRange === "function" &&
+                ae.value != null
+              ) {
+                const len = ae.value.length;
+                ae.setSelectionRange(len, len);
+              }
+              ae.blur();
+            }
+          } catch (_) {}
+
+          if (navigator.clipboard && window.isSecureContext) {
+            try {
+              await navigator.clipboard.writeText(text);
+              return true;
+            } catch (_) {}
+          }
+
+          const ta = document.createElement("textarea");
+          ta.value = text;
+          ta.setAttribute("readonly", "");
+          ta.style.position = "fixed";
+          ta.style.top = "-1000px";
+          ta.style.left = "-1000px";
+          document.body.appendChild(ta);
+          ta.focus();
+          ta.select();
+          let ok = false;
+          try {
+            ok = document.execCommand("copy");
+          } catch (_) {
+            ok = false;
+          }
+          document.body.removeChild(ta);
+          return ok;
+        }
+
+        function cssEscape(s) {
+          if (window.CSS && CSS.escape) return CSS.escape(s);
+          return String(s).replace(/["\\]/g, "\\$&");
+        }
+
+        // 归一化路径：统一分隔符，剥掉 ./ / ../ 前缀、绝对前缀、重复斜杠
+        function normPath(p) {
+          let s = String(p || "")
+            .replace(/\\/g, "/")
+            .trim();
+          while (/^\.\//.test(s)) s = s.slice(2);
+          s = s.replace(/^\/+/, "");
+          s = s.replace(/\/{2,}/g, "/");
+          s = s.replace(/\/+$/, "");
+          return s;
+        }
+
+        // 从节点的 path 中取出「相对根目录」的路径
+        //  - local 模式：node.path 本身就是相对根名，直接用
+        //  - server 模式：node.path 是绝对路径，去掉 state.root 前缀
+        function relPathOf(node) {
+          if (!node || !node.path) return "";
+          let p = String(node.path).replace(/\\/g, "/");
+
+          if (state.mode === "server" && state.root) {
+            const root = String(state.root)
+              .replace(/\\/g, "/")
+              .replace(/\/+$/, "");
+            if (p === root) return "";
+            if (p.startsWith(root + "/")) {
+              p = p.slice(root.length + 1);
+            }
+          }
+
+          // 去掉可能残留的前缀
+          while (/^\.\//.test(p)) p = p.slice(2);
+          p = p.replace(/^\/+/, "");
+          p = p.replace(/\/{2,}/g, "/");
+          p = p.replace(/\/+$/, "");
+          return p;
+        }
+
+        /* ── 建树 ─────────────────────────────────── */
+        function buildTreeFromEntries(entries) {
+          if (!entries.length) return { name: "project", nodes: [] };
+
+          const rootName =
+            entries[0].path.split("/").filter(Boolean)[0] || "project";
+          const root = { type: "dir", name: rootName, path: "", children: [] };
+          const nodeMap = new Map();
+          nodeMap.set("", root);
+
+          for (const e of entries) {
+            const parts = e.path.split("/").filter(Boolean);
+            if (parts.length > 1 && parts[0] === rootName) parts.shift();
+            if (!parts.length) continue;
+
+            let curPath = "";
+            let parent = root;
+
+            for (let i = 0; i < parts.length; i++) {
+              const name = parts[i];
+              curPath = curPath ? curPath + "/" + name : name;
+              const isLast = i === parts.length - 1;
+
+              let node = nodeMap.get(curPath);
+              if (!node) {
+                node = {
+                  type: isLast ? "file" : "dir",
+                  name,
+                  path: curPath,
+                  size: isLast ? e.size || 0 : 0,
+                  children: isLast ? undefined : [],
+                };
+                nodeMap.set(curPath, node);
+                parent.children.push(node);
+              }
+              parent = node;
+            }
+
+            if (e.file) state.localFiles.set(curPath, e.file);
+          }
+
+          sortNodes(root);
+          return { name: rootName, nodes: root.children };
+        }
+
+        function sortNodes(node) {
+          if (!node.children) return;
+          node.children.sort((a, b) => {
+            if (a.type !== b.type) return a.type === "dir" ? -1 : 1;
+            return a.name.localeCompare(b.name, undefined, {
+              numeric: true,
+              sensitivity: "base",
+            });
+          });
+          for (const c of node.children) sortNodes(c);
+        }
+
+        function computeCounts(nodes) {
+          for (const n of nodes) {
+            if (n.type === "file") {
+              n._count = 1;
+            } else {
+              computeCounts(n.children || []);
+              n._count = (n.children || []).reduce(
+                (s, c) => s + (c._count || 0),
+                0,
+              );
+            }
+          }
+        }
+
+        /* ── 载入：服务器 ─────────────────────────── */
+        async function loadFromServer(rawPath) {
+          if (location.protocol === "file:") {
+            toast(
+              "路径模式需要 http:// 访问 —— 请改用「选择文件夹」或拖入文件夹",
+            );
+            return;
+          }
+
+          const target = String(rawPath || "").trim();
+          if (!target) {
+            toast("请输入文件夹路径");
+            el.pathInput.focus();
+            return;
+          }
+
+          el.loadBtn.disabled = true;
+          el.loadBtn.textContent = "读取中";
+
+          try {
+            const res = await fetch(
+              "/api/tree?path=" + encodeURIComponent(target),
+            );
+            const data = await res.json().catch(() => ({}));
+
+            if (!res.ok) {
+              throw new Error(data.error || "读取失败");
+            }
+            if (!data.children || !data.children.length) {
+              toast("这个文件夹里没有可读取的内容");
+              return;
+            }
+
+            resetState();
+            state.mode = "server";
+            state.root = data.root;
+            state.rootName = data.name || data.root;
+            state.tree = data.children;
+
+            computeCounts(state.tree);
+
+            el.pathInput.value = data.root;
+            try {
+              localStorage.setItem("codetree.lastPath", data.root);
+            } catch (_) {}
+
+            renderAll();
+            toast("已载入 " + state.rootName);
+          } catch (e) {
+            toast("读取失败：" + e.message);
+          } finally {
+            el.loadBtn.disabled = false;
+            el.loadBtn.textContent = "读取";
+          }
+        }
+
+        /* ── 载入：本地 ───────────────────────────── */
+        function loadFromFileList(files) {
+          let list = Array.from(files);
+          if (!list.length) return;
+
+          if (list.length > MAX_LOCAL_FILES) {
+            toast("文件过多，仅读取前 " + MAX_LOCAL_FILES + " 个");
+            list = list.slice(0, MAX_LOCAL_FILES);
+          }
+
+          const entries = list.map((f) => ({
+            path: (f.webkitRelativePath || f.name).replace(/\\/g, "/"),
+            size: f.size,
+            file: f,
+          }));
+
+          resetState();
+          state.mode = "local";
+
+          const built = buildTreeFromEntries(entries);
+          state.rootName = built.name;
+          state.root = built.name;
+          state.tree = built.nodes;
+
+          computeCounts(state.tree);
+
+          el.pathInput.value = built.name + "/";
+          renderAll();
+          toast(
+            "已载入 " +
+              built.name +
+              "（本地读取，" +
+              entries.length +
+              " 个文件）",
+          );
+        }
+
+        function resetState() {
+          state.picked.clear();
+          state.excluded.clear();
+          state.collapsed.clear();
+          state.contentCache.clear();
+          state.localFiles.clear();
+          state.tree = [];
+          state.search = "";
+          state.cursorPath = null;
+          state.cursorList = [];
+          el.search.value = "";
+          el.out.scrollTop = 0;
+        }
+
+        function renderAll() {
+          renderTree();
+          updateStatus();
+          renderOutput();
+        }
+
+        /* ── 渲染：文件树 ─────────────────────────── */
+        function renderTree() {
+          const host = el.tree;
+          host.innerHTML = "";
+
+          if (!state.tree.length) {
+            const p = document.createElement("p");
+            p.className = "tree-empty";
+            p.textContent = "拖入一个项目文件夹，或在上方输入路径。";
+            host.appendChild(p);
+            state.cursorList = [];
+            updateCursorClass();
+            return;
+          }
+
+          const q = state.search.trim().toLowerCase();
+
+          if (q) {
+            const all = [];
+            collectFiles(state.tree, all, false);
+            const matched = all
+              .filter((f) => f.node.path.toLowerCase().includes(q))
+              .sort((a, b) => {
+                const an = a.node.name.toLowerCase().includes(q) ? 0 : 1;
+                const bn = b.node.name.toLowerCase().includes(q) ? 0 : 1;
+                if (an !== bn) return an - bn;
+                return a.node.path.localeCompare(b.node.path);
+              })
+              .slice(0, 400);
+
+            if (!matched.length) {
+              const p = document.createElement("p");
+              p.className = "tree-empty";
+              p.textContent = "没有匹配的文件。";
+              host.appendChild(p);
+              state.cursorList = [];
+              updateCursorClass();
+              return;
+            }
+
+            for (const { node, off } of matched) {
+              host.appendChild(buildFileRow(node, 0, true, off));
+            }
+            state.cursorList = matched.map((m) => m.node.path);
+            if (!state.cursorList.includes(state.cursorPath)) {
+              state.cursorPath = state.cursorList[0] || null;
+            }
+            updateCursorClass();
+            return;
+          }
+
+          host.appendChild(buildTreeFragment(state.tree, 0, false));
+
+          state.cursorList = [];
+          collectVisiblePaths(state.tree, state.cursorList);
+          if (
+            state.cursorPath &&
+            !state.cursorList.includes(state.cursorPath)
+          ) {
+            state.cursorPath = state.cursorList[0] || null;
+          }
+          updateCursorClass();
+        }
+
+        function buildTreeFragment(nodes, depth, parentOff) {
+          const frag = document.createDocumentFragment();
+          for (const node of nodes) {
+            if (node.type === "dir") {
+              frag.appendChild(buildDirNode(node, depth, parentOff, null));
+            } else {
+              const off = parentOff || state.excluded.has(node.path);
+              frag.appendChild(buildFileRow(node, depth, false, off));
+            }
+          }
+          return frag;
+        }
+
+        // 被排除的目录本身保留在列表中，便于重新勾选；其子项一律不进入
+        function collectVisiblePaths(nodes, out) {
+          for (const n of nodes) {
+            const selfOff = state.excluded.has(n.path);
+            out.push(n.path);
+            if (selfOff) continue;
+            if (
+              n.type === "dir" &&
+              !state.collapsed.has(n.path) &&
+              n.children
+            ) {
+              collectVisiblePaths(n.children, out);
+            }
+          }
+        }
+
+        function collectFiles(nodes, out, parentOff) {
+          for (const n of nodes) {
+            const off =
+              parentOff || (n.type === "dir" && state.excluded.has(n.path));
+            if (n.type === "file") {
+              out.push({ node: n, off });
+            } else if (n.children && n.children.length) {
+              collectFiles(n.children, out, off);
+            }
+          }
+        }
+
+        function countExcluded(node) {
+          if (!node.children) return 0;
+          let n = 0;
+          for (const c of node.children) {
+            if (state.excluded.has(c.path)) {
+              n += c.type === "dir" ? c._count || 0 : 1;
+            } else if (c.type === "dir") {
+              n += countExcluded(c);
+            }
+          }
+          return n;
+        }
+
+        function buildDirNode(node, depth, parentOff, _unused) {
+          const selfOff = state.excluded.has(node.path);
+          const off = parentOff || selfOff;
+          const collapsed = state.collapsed.has(node.path);
+
+          const wrap = document.createElement("div");
+
+          const row = document.createElement("div");
+          row.className = "row is-dir" + (off ? " is-off" : "");
+          row.style.paddingLeft = 8 + depth * 13 + "px";
+          row.tabIndex = 0;
+          row.setAttribute("role", "checkbox");
+          row.setAttribute("aria-checked", String(!off));
+          row.setAttribute("aria-expanded", String(!collapsed));
+          row.dataset.path = node.path;
+          row.title = node.path;
+
+          const chev = document.createElement("span");
+          chev.className = "chev" + (collapsed ? "" : " is-open");
+          row.appendChild(chev);
+
+          const chk = document.createElement("span");
+          const excludedKids = countExcluded(node);
+          const totalKids = node._count || 0;
+          if (off) {
+            chk.className = "chk";
+          } else if (excludedKids > 0 && excludedKids < totalKids) {
+            chk.className = "chk is-half";
+          } else {
+            chk.className = "chk is-on";
+          }
+          row.appendChild(chk);
+
+          const name = document.createElement("span");
+          name.className = "name";
+          name.textContent = node.name;
+          row.appendChild(name);
+
+          const size = document.createElement("span");
+          size.className = "size";
+          size.textContent = String(node._count || 0);
+          row.appendChild(size);
+
+          wrap.appendChild(row);
+
+          if (!collapsed && node.children && node.children.length) {
+            wrap.appendChild(buildTreeFragment(node.children, depth + 1, off));
+          }
+
+          const toggleCollapse = () => {
+            if (collapsed) state.collapsed.delete(node.path);
+            else state.collapsed.add(node.path);
+            renderTree();
+            updateCursorClass();
+          };
+
+          const toggleExclude = () => {
+            if (parentOff) return;
+            if (selfOff) state.excluded.delete(node.path);
+            else state.excluded.add(node.path);
+            renderTree();
+            updateCursorClass();
+            renderOutput();
+          };
+
+          row.addEventListener("mousedown", () => {
+            state.cursorPath = node.path;
+          });
+
+          row.addEventListener("click", (e) => {
+            if (e.target.closest(".chev")) {
+              e.stopPropagation();
+              toggleCollapse();
+              return;
+            }
+            toggleExclude();
+          });
+
+          row.addEventListener("keydown", (e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              toggleExclude();
+            } else if (e.key === "p" || e.key === "P") {
+              e.preventDefault();
+              toggleCollapse();
+            }
+          });
+
+          return wrap;
+        }
+
+        function buildFileRow(node, depth, isSearch, isOff) {
+          const picked = state.picked.has(node.path);
+
+          const row = document.createElement("div");
+          row.className =
+            "row is-file" +
+            (picked ? " is-picked" : "") +
+            (isSearch ? " is-search" : "") +
+            (isOff ? " is-off" : "");
+          row.style.paddingLeft = 8 + depth * 13 + "px";
+          row.tabIndex = 0;
+          row.setAttribute("role", "checkbox");
+          row.setAttribute("aria-checked", String(picked));
+          row.dataset.path = node.path;
+          row.title = node.path;
+
+          const chev = document.createElement("span");
+          chev.className = "chev is-leaf";
+          row.appendChild(chev);
+
+          const chk = document.createElement("span");
+          chk.className = "chk" + (picked ? " is-on" : "");
+          row.appendChild(chk);
+
+          const name = document.createElement("span");
+          name.className = "name";
+          name.textContent = node.name;
+          row.appendChild(name);
+
+          if (isSearch) {
+            const hint = document.createElement("span");
+            hint.className = "path-hint";
+            hint.textContent = node.path;
+            row.appendChild(hint);
+          }
+
+          const size = document.createElement("span");
+          size.className = "size";
+          size.textContent = fmtSize(node.size);
+          row.appendChild(size);
+
+          const toggle = () => togglePick(node.path);
+
+          row.addEventListener("mousedown", () => {
+            state.cursorPath = node.path;
+          });
+          row.addEventListener("click", toggle);
+          row.addEventListener("keydown", (e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              toggle();
+            }
+          });
+
+          return row;
+        }
+
+        /* ── 交互：选中 / 排除 ───────────────────── */
+        el.tree.addEventListener("mousedown", () => {
+          state.focusZone = "tree";
+          el.tree.classList.add("is-zone-focus");
+          el.out.classList.remove("is-zone-focus");
+        });
+
+        el.out.addEventListener("mousedown", () => {
+          state.focusZone = "output";
+          el.out.classList.add("is-zone-focus");
+          el.tree.classList.remove("is-zone-focus");
+        });
+
+        el.tablist.addEventListener("mousedown", () => {
+          state.focusZone = "tabs";
+          el.tree.classList.remove("is-zone-focus");
+          el.out.classList.remove("is-zone-focus");
+        });
+
+        function togglePick(path) {
+          if (state.picked.has(path)) state.picked.delete(path);
+          else state.picked.add(path);
+          renderTree();
+          updateStatus();
+          renderOutput();
+        }
+
+        function updateStatus() {
+          const total = countAllFiles(state.tree);
+          const picked = state.picked.size;
+
+          if (!state.tree.length) {
+            el.selInfo.textContent = "未载入";
+          } else if (picked === 0) {
+            el.selInfo.textContent = total + " 个文件 · 未选内容";
+          } else {
+            el.selInfo.textContent =
+              "已选 " + picked + " / " + total + " 个文件";
+          }
+
+          el.fileCount.textContent = String(picked);
+        }
+
+        function countAllFiles(nodes) {
+          let n = 0;
+          for (const node of nodes) {
+            if (node.type === "file") n++;
+            else if (node.children) n += countAllFiles(node.children);
+          }
+          return n;
+        }
+
+        /* ── 内容获取 ─────────────────────────────── */
+        async function ensureContent(paths) {
+          const missing = paths.filter((p) => !state.contentCache.has(p));
+          if (!missing.length) return;
+
+          if (state.mode === "local") {
+            await Promise.all(
+              missing.map(async (p) => {
+                const file = state.localFiles.get(p);
+                if (!file) {
+                  state.contentCache.set(p, "[文件不可用]");
+                  return;
+                }
+                try {
+                  state.contentCache.set(p, await file.text());
+                } catch (_) {
+                  state.contentCache.set(p, "[读取失败]");
+                }
+              }),
+            );
+            return;
+          }
+
+          if (state.mode === "server") {
+            try {
+              const res = await fetch("/api/files", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ root: state.root, paths: missing }),
+              });
+              const data = await res.json();
+              if (Array.isArray(data.files)) {
+                for (const f of data.files) {
+                  state.contentCache.set(f.path, f.content ?? "");
+                }
+              }
+              for (const p of missing) {
+                if (!state.contentCache.has(p))
+                  state.contentCache.set(p, "[读取失败]");
+              }
+            } catch (_) {
+              for (const p of missing) state.contentCache.set(p, "[读取失败]");
+            }
+          }
+        }
+
+        /* ── 输出构建 ─────────────────────────────── */
+        function pruneTree(nodes, level, parentOff) {
+          const out = [];
+
+          for (const node of nodes) {
+            const off = parentOff || state.excluded.has(node.path);
+            if (off) continue;
+
+            if (state.scope === "slim") {
+              if (node.type === "dir" && IGNORE_DIRS.has(node.name)) continue;
+              if (node.type === "file" && IGNORE_FILES.has(node.name)) continue;
+            }
+
+            if (node.type === "file") {
+              out.push({ ...node, children: [] });
+              continue;
+            }
+
+            const atLimit = state.depth > 0 && level >= state.depth;
+            const kids = atLimit
+              ? []
+              : pruneTree(node.children || [], level + 1, false);
+
+            out.push({
+              ...node,
+              children: kids,
+              truncated: atLimit && (node.children || []).length > 0,
+            });
+          }
+
+          return out;
+        }
+
+        function formatText(nodes, rootLabel) {
+          const lines = [rootLabel + "/"];
+
+          const walk = (list, prefix) => {
+            list.forEach((n, i) => {
+              const last = i === list.length - 1;
+              const conn = last ? "└── " : "├── ";
+              let label = n.name;
+              if (n.type === "dir") label += "/";
+              if (n.truncated) label += " …";
+              lines.push(prefix + conn + label);
+              if (n.type === "dir" && n.children.length) {
+                walk(n.children, prefix + (last ? "    " : "│   "));
+              }
+            });
+          };
+
+          walk(nodes, "");
+          return lines.join("\n");
+        }
+
+        function formatPaths(nodes) {
+          const out = [];
+
+          const walk = (list, prefix) => {
+            for (const n of list) {
+              const p = prefix ? prefix + "/" + n.name : n.name;
+              if (n.type === "file") out.push(p);
+              else if (n.children && n.children.length) walk(n.children, p);
+            }
+          };
+
+          walk(nodes, "");
+          return out.join("\n");
+        }
+
+        function formatJSON(nodes, rootLabel) {
+          const build = (n) => {
+            const o = { name: n.name, type: n.type };
+            if (n.type === "file") o.size = n.size || 0;
+            if (n.children && n.children.length)
+              o.children = n.children.map(build);
+            return o;
+          };
+
+          return JSON.stringify(
+            { name: rootLabel, type: "dir", children: nodes.map(build) },
+            null,
+            2,
+          );
+        }
+
+        function buildStructure() {
+          const pruned = pruneTree(state.tree, 1, false);
+          // 根标签只取 basename，避免输出绝对路径
+          const rawLabel = state.rootName || state.root || "project";
+          const label =
+            String(rawLabel)
+              .replace(/\\/g, "/")
+              .replace(/\/+$/, "")
+              .split("/")
+              .filter(Boolean)
+              .pop() || "project";
+
+          if (state.format === "paths") return formatPaths(pruned);
+          if (state.format === "json") return formatJSON(pruned, label);
+          return formatText(pruned, label);
+        }
+
+        function buildContent() {
+          const paths = [...state.picked].sort();
+          if (!paths.length) return "";
+
+          return paths
+            .map((p) => {
+              const content = state.contentCache.get(p) ?? "";
+              // 路径展示统一走 relPathOf：server 模式从绝对路径剥掉 root
+              const node = findNodeByPath(state.tree, p);
+              const clean = node ? relPathOf(node) : normPath(p);
+              return "====== " + clean + " ======\n" + content;
+            })
+            .join("\n\n");
+        }
+
+        /* ── 渲染：输出 ───────────────────────────── */
+        let outputToken = 0;
+
+        async function renderOutput() {
+          const token = ++outputToken;
+
+          // 文件清单：文件内容 tab 时显示
+          renderFilelist();
+
+          if (!state.tree.length) {
+            state.output = "";
+            el.out.textContent =
+              "还没有载入项目。\n\n" +
+              "· 把项目文件夹拖到窗口里\n" +
+              "· 或者点「选择文件夹」\n" +
+              "· 或者在上方输入绝对路径后回车\n\n" +
+              "读取完全在本地进行，路径模式需要先启动 Node 服务器。";
+            el.out.classList.add("is-placeholder");
+            const s1 = $("#stamp");
+            if (s1) {
+              s1.classList.remove("is-on");
+              s1.textContent = "";
+            }
+            return;
+          }
+
+          if (state.tab === "files" && state.picked.size === 0) {
+            state.output = "";
+            el.out.textContent =
+              "还没有选中任何文件。\n\n" +
+              "在左侧点击文件前的复选框，把它的内容加进来。\n" +
+              "点击目录前的复选框，可以把整个目录从目录结构中排除。";
+            el.out.classList.add("is-placeholder");
+            const s2 = $("#stamp");
+            if (s2) {
+              s2.classList.remove("is-on");
+              s2.textContent = "";
+            }
+            return;
+          }
+
+          if (
+            (state.tab === "files" || state.tab === "all") &&
+            state.picked.size
+          ) {
+            await ensureContent([...state.picked]);
+            if (token !== outputToken) return;
+          }
+
+          const parts = [];
+
+          if (state.tab === "tree" || state.tab === "all") {
+            const s = buildStructure();
+            if (s) parts.push(s);
+          }
+
+          if (state.tab === "files" || state.tab === "all") {
+            const c = buildContent();
+            if (c) parts.push(c);
+          }
+
+          const text = parts.join("\n\n");
+
+          state.output = text;
+          el.out.textContent = text;
+          el.out.classList.toggle("is-placeholder", !text);
+          if (!text) {
+            el.out.textContent = "当前设置下没有可输出的内容。";
+          }
+
+          const stamp = $("#stamp");
+          if (stamp) {
+            if (state.picked.size) {
+              stamp.classList.add("is-on");
+              stamp.textContent =
+                "已读取 " +
+                state.picked.size +
+                " 个文件 · " +
+                (state.mode === "server"
+                  ? "服务器模式，复制时会重新拉取"
+                  : "本地模式，刷新需重新选文件夹") +
+                " · " +
+                nowTime();
+            } else {
+              stamp.classList.remove("is-on");
+              stamp.textContent = "";
+            }
+          }
+        }
+
+        function renderFilelist() {
+          const host = el.filelist;
+          if (!host) return;
+
+          const show = state.tab === "files" && state.picked.size > 0;
+          if (!show) {
+            host.classList.remove("is-on");
+            host.textContent = "";
+            return;
+          }
+
+          host.classList.add("is-on");
+          host.innerHTML = "";
+
+          const count = document.createElement("span");
+          count.className = "fcount";
+          count.textContent = "已选 " + state.picked.size + " 个文件：";
+          host.appendChild(count);
+
+          const items = [...state.picked]
+            .map((p) => {
+              const node = findNodeByPath(state.tree, p);
+              return { raw: p, clean: node ? relPathOf(node) : normPath(p) };
+            })
+            .sort((a, b) => a.clean.localeCompare(b.clean));
+
+          for (const { clean } of items) {
+            const s = document.createElement("span");
+            s.className = "fpath";
+            s.textContent = clean;
+            host.appendChild(s);
+          }
+        }
+
+        /* ── 键盘导航 ─────────────────────────────── */
+        function moveCursor(key) {
+          const list = state.cursorList;
+          if (!list.length) return;
+
+          let idx = list.indexOf(state.cursorPath);
+          const PAGE = 12;
+
+          switch (key) {
+            case "ArrowDown":
+              idx = idx < 0 ? 0 : Math.min(idx + 1, list.length - 1);
+              break;
+            case "ArrowUp":
+              idx = idx < 0 ? list.length - 1 : Math.max(idx - 1, 0);
+              break;
+            case "PageDown":
+              idx = idx < 0 ? 0 : Math.min(idx + PAGE, list.length - 1);
+              break;
+            case "PageUp":
+              idx = idx < 0 ? 0 : Math.max(idx - PAGE, 0);
+              break;
+            case "Home":
+              idx = 0;
+              break;
+            case "End":
+              idx = list.length - 1;
+              break;
+          }
+
+          state.cursorPath = list[idx];
+          updateCursorClass();
+
+          const row = el.tree.querySelector(
+            '[data-path="' + cssEscape(state.cursorPath) + '"]',
+          );
+          if (row) row.scrollIntoView({ block: "nearest" });
+        }
+
+        function updateCursorClass() {
+          for (const r of el.tree.querySelectorAll(".row.is-cursor")) {
+            r.classList.remove("is-cursor");
+          }
+          if (!state.cursorPath) return;
+          const row = el.tree.querySelector(
+            '[data-path="' + cssEscape(state.cursorPath) + '"]',
+          );
+          if (row) row.classList.add("is-cursor");
+        }
+
+        /* ── 焦点区域 ─────────────────────────────── */
+        function setFocusZone(zone) {
+          state.focusZone = zone;
+          el.tree.classList.toggle("is-zone-focus", zone === "tree");
+          el.out.classList.toggle("is-zone-focus", zone === "output");
+
+          if (zone === "tree") {
+            el.tree.focus({ preventScroll: true });
+            if (!state.cursorPath && state.cursorList.length) {
+              state.cursorPath = state.cursorList[0];
+              updateCursorClass();
+            }
+          } else if (zone === "output") {
+            el.out.focus({ preventScroll: true });
+          }
+        }
+
+        function focusInTree() {
+          const ae = document.activeElement;
+          if (state.focusZone !== "tree") return false;
+          return (
+            ae === el.tree ||
+            ae === document.body ||
+            (ae && ae.classList && ae.classList.contains("row"))
+          );
+        }
+
+        function activatePath(path) {
+          const node = findNodeByPath(state.tree, path);
+          if (!node) return;
+
+          if (node.type === "file") {
+            togglePick(path);
+          } else {
+            if (state.excluded.has(path)) state.excluded.delete(path);
+            else state.excluded.add(path);
+            renderTree();
+            updateCursorClass();
+            renderOutput();
+          }
+        }
+
+        function findNodeByPath(nodes, target) {
+          for (const n of nodes) {
+            if (n.path === target) return n;
+            if (n.type === "dir" && n.children) {
+              const hit = findNodeByPath(n.children, target);
+              if (hit) return hit;
+            }
+          }
+          return null;
+        }
+
+        /* ── 复制 ─────────────────────────────────── */
+        async function copyCurrentSelection() {
+          const zone = state.focusZone;
+
+          if (zone === "tree" && state.cursorPath) {
+            const node = findNodeByPath(state.tree, state.cursorPath);
+            if (node) {
+              const clean = relPathOf(node);
+              const rel = node.type === "dir" ? clean + "/" : clean;
+              const ok = await copyText(rel);
+              toast(ok ? "已复制路径 · " + rel : "复制失败，请手动选择");
+              return;
+            }
+          }
+
+          // 其余情况：复制输出区内容（与「复制」按钮一致）
+          if (!state.output) {
+            toast("没有可复制的内容");
+            return;
+          }
+
+          if (state.picked.size) {
+            state.contentCache.clear();
+          }
+
+          const label = el.copyBtn.textContent;
+          el.copyBtn.disabled = true;
+          el.copyBtn.textContent = "复制中";
+          try {
+            await renderOutput();
+            const ok = await copyText(state.output);
+            if (ok) {
+              toast(
+                "已复制 · " +
+                  state.output.length.toLocaleString() +
+                  " 字符 · " +
+                  nowTime(),
+              );
+            } else {
+              toast("复制失败，请手动选择输出区内容");
+            }
+          } finally {
+            el.copyBtn.disabled = false;
+            el.copyBtn.textContent = label;
+          }
+        }
+
+        /* ── 界面事件 ─────────────────────────────── */
+        el.loadBtn.addEventListener("click", () =>
+          loadFromServer(el.pathInput.value),
+        );
+
+        el.pathInput.addEventListener("keydown", (e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            loadFromServer(el.pathInput.value);
+          } else if (e.key === "Escape") {
+            el.pathInput.blur();
+          }
+        });
+
+        el.pickBtn.addEventListener("click", () => el.fileInput.click());
+
+        el.fileInput.addEventListener("change", (e) => {
+          if (e.target.files && e.target.files.length) {
+            loadFromFileList(e.target.files);
+          }
+          e.target.value = "";
+        });
+
+        el.search.addEventListener("input", () => {
+          state.search = el.search.value;
+          renderTree();
+        });
+
+        el.search.addEventListener("keydown", (e) => {
+          if (e.key === "Escape") {
+            e.preventDefault();
+            if (el.search.value) {
+              el.search.value = "";
+              state.search = "";
+              renderTree();
+            } else {
+              el.search.blur();
+            }
+          }
+        });
+
+        el.selectAll.addEventListener("click", () => {
+          if (!state.tree.length) return;
+          const all = [];
+          collectFiles(state.tree, all, false);
+          for (const { node } of all) state.picked.add(node.path);
+          renderTree();
+          updateStatus();
+          renderOutput();
+          toast("已选中 " + state.picked.size + " 个文件");
+        });
+
+        el.clearSel.addEventListener("click", () => {
+          state.picked.clear();
+          renderTree();
+          updateStatus();
+          renderOutput();
+        });
+
+        for (const btn of el.tabs) {
+          btn.addEventListener("click", () => {
+            switchTab(btn.dataset.tab);
+          });
+        }
+
+        function switchTab(tabName) {
+          state.tab = tabName;
+          for (const t of el.tabs) {
+            const on = t.dataset.tab === tabName;
+            t.classList.toggle("is-on", on);
+            t.setAttribute("aria-selected", String(on));
+            t.classList.remove("is-tab-focus");
+          }
+          updateToolbar();
+          renderOutput();
+        }
+
+        // Tab 键循环切换三个标签
+        function cycleTab(dir) {
+          const names = el.tabs.map((t) => t.dataset.tab);
+          const cur = names.indexOf(state.tab);
+          const next = (cur + dir + names.length) % names.length;
+          switchTab(names[next]);
+
+          // 给刚激活的标签一个短暂的焦点提示
+          const btn = el.tabs[next];
+          if (btn) {
+            btn.classList.add("is-tab-focus");
+            clearTimeout(cycleTab._timer);
+            cycleTab._timer = setTimeout(() => {
+              btn.classList.remove("is-tab-focus");
+            }, 700);
+          }
+
+          toast(
+            "标签：" +
+              (state.tab === "all"
+                ? "全部"
+                : state.tab === "tree"
+                  ? "目录结构"
+                  : "文件内容"),
+          );
+        }
+
+        function updateToolbar() {
+          const tab = state.tab;
+          for (const f of $$(".field", el.toolbar)) {
+            const scope = f.dataset.show;
+            const visible =
+              (tab === "tree" && scope === "tree") ||
+              (tab === "files" && scope === "files") ||
+              (tab === "all" && (scope === "tree" || scope === "files"));
+            f.hidden = !visible;
+          }
+        }
+
+        for (const seg of $$(".seg", el.toolbar)) {
+          seg.addEventListener("click", (e) => {
+            const btn = e.target.closest("button");
+            if (!btn || btn.classList.contains("is-on")) return;
+
+            const group = seg.dataset.group;
+            for (const b of $$("button", seg)) {
+              b.classList.toggle("is-on", b === btn);
+            }
+
+            state[group] =
+              group === "depth" ? Number(btn.dataset.val) : btn.dataset.val;
+            renderOutput();
+          });
+        }
+
+        el.copyBtn.addEventListener("click", async () => {
+          if (!state.output) {
+            toast("没有可复制的内容");
+            return;
+          }
+
+          const label = el.copyBtn.textContent;
+          el.copyBtn.disabled = true;
+          el.copyBtn.textContent = "复制中";
+
+          if (state.picked.size) {
+            state.contentCache.clear();
+          }
+
+          try {
+            await renderOutput();
+            const ok = await copyText(state.output);
+            if (ok) {
+              toast(
+                "已复制 · " +
+                  state.output.length.toLocaleString() +
+                  " 字符 · " +
+                  nowTime(),
+              );
+            } else {
+              toast("复制失败，请手动选择输出区内容");
+            }
+          } finally {
+            el.copyBtn.disabled = false;
+            el.copyBtn.textContent = label;
+          }
+        });
+
+        /* ── 批量导入 ─────────────────────────────── */
+        function openImportModal() {
+          const r = el.importResult;
+          r.classList.remove("is-open", "ok", "warn", "err");
+          r.textContent = "";
+          el.importModal.classList.add("is-open");
+          setTimeout(() => {
+            el.importInput.focus();
+            el.importInput.select();
+          }, 40);
+        }
+
+        function closeImportModal() {
+          el.importModal.classList.remove("is-open");
+          el.importInput.blur();
+        }
+
+        function parseImportInput(raw) {
+          const lines = String(raw).split(/\r?\n/);
+          const out = [];
+          for (let line of lines) {
+            line = line.trim();
+            if (!line || line.startsWith("#")) continue;
+            const m = line.match(/^={3,}\s*(.+?)\s*={3,}$/);
+            out.push(m ? m[1].trim() : line);
+          }
+          return out;
+        }
+
+        function importResultShow(msg, kind) {
+          const r = el.importResult;
+          r.textContent = msg;
+          r.classList.remove("ok", "warn", "err");
+          r.classList.add("is-open", kind);
+        }
+
+        function buildImportIndex() {
+          const all = [];
+          collectFiles(state.tree, all, false);
+          const map = new Map();
+
+          const put = (key, node) => {
+            const k = normPath(key);
+            if (!k) return;
+            if (!map.has(k)) map.set(k, node);
+          };
+
+          for (const { node } of all) {
+            // 统一取「相对根目录」的干净路径：
+            //  local  模式 → "ai_bid_system/.env"
+            //  server 模式 → "ai_bid_system/.env"（从绝对路径剥掉 root）
+            const full = relPathOf(node);
+            put(full, node);
+
+            const parts = full.split("/").filter(Boolean);
+            // 去根名："ai_bid_system/.env" → ".env"
+            if (parts.length > 1) put(parts.slice(1).join("/"), node);
+            // 去根名再去一层："a/b/c.js" → "c.js"
+            if (parts.length > 2) put(parts.slice(2).join("/"), node);
+
+            // 只留文件名兜底
+            put(node.name, node);
+          }
+
+          return map;
+        }
+
+        async function doImport() {
+          const raw = el.importInput.value;
+          const inputPaths = parseImportInput(raw);
+
+          if (!inputPaths.length) {
+            importResultShow("请输入至少一个文件路径。", "err");
+            return { matched: [], unmatched: [] };
+          }
+
+          const map = buildImportIndex();
+
+          const matched = [];
+          const unmatched = [];
+          const seen = new Set();
+
+          for (const p of inputPaths) {
+            const key = normPath(p);
+            if (!key || seen.has(key)) continue;
+            seen.add(key);
+            const node = map.get(key);
+            if (node) matched.push(node);
+            else unmatched.push(p);
+          }
+
+          if (!matched.length) {
+            importResultShow(
+              "没有匹配到任何文件（共输入 " +
+                inputPaths.length +
+                " 条）：\n" +
+                unmatched
+                  .slice(0, 20)
+                  .map((p) => "  · " + p)
+                  .join("\n") +
+                (unmatched.length > 20
+                  ? "\n  … 还有 " + (unmatched.length - 20) + " 条"
+                  : ""),
+              "err",
+            );
+            return { matched: [], unmatched };
+          }
+
+          for (const node of matched) state.picked.add(node.path);
+          renderTree();
+          updateStatus();
+          renderOutput();
+
+          let msg = "已导入 " + matched.length + " 个文件";
+          let kind = "ok";
+          if (unmatched.length) {
+            kind = "warn";
+            msg +=
+              "，" +
+              unmatched.length +
+              " 个未找到：\n" +
+              unmatched
+                .slice(0, 20)
+                .map((p) => "  · " + p)
+                .join("\n");
+            if (unmatched.length > 20)
+              msg += "\n  … 还有 " + (unmatched.length - 20) + " 条";
+          }
+          importResultShow(msg, kind);
+
+          return { matched, unmatched };
+        }
+
+        el.importBtn.addEventListener("click", openImportModal);
+        $("#importClose").addEventListener("click", closeImportModal);
+        $("#importCancel").addEventListener("click", closeImportModal);
+
+        el.importModal.addEventListener("mousedown", (e) => {
+          if (e.target === el.importModal) closeImportModal();
+        });
+
+        $("#importOnly").addEventListener("click", async (e) => {
+          const btn = e.currentTarget;
+          btn.disabled = true;
+          try {
+            const { matched } = await doImport();
+            if (matched.length) setTimeout(closeImportModal, 500);
+          } finally {
+            btn.disabled = false;
+          }
+        });
+
+        /* ── 背景皮肤 ─────────────────────────────── */
+        const SKIN_KEY = "codetree.skin.data";
+        const SKIN_OP_KEY = "codetree.skin.opacity";
+
+        function applySkin(dataUrl, opacity) {
+          const root = document.documentElement;
+
+          if (dataUrl) {
+            root.style.setProperty("--skin-image", `url("${dataUrl}")`);
+            root.style.setProperty("--skin-opacity", String(opacity));
+            root.setAttribute("data-skin", "on");
+          } else {
+            root.style.removeProperty("--skin-image");
+            root.style.setProperty("--skin-opacity", "0");
+            root.removeAttribute("data-skin");
+          }
+
+          state.skinOpacity = opacity;
+
+          if (dataUrl) {
+            el.skinPreview.style.backgroundImage = `url("${dataUrl}")`;
+            el.skinPreview.textContent = "";
+          } else {
+            el.skinPreview.style.backgroundImage = "";
+            el.skinPreview.textContent = "还没有设置背景";
+          }
+        }
+
+        function openSkinModal() {
+          el.skinModal.classList.add("is-open");
+          el.skinOpacity.value = String(Math.round(state.skinOpacity * 100));
+          el.skinOpacityVal.textContent = el.skinOpacity.value + "%";
+        }
+
+        function closeSkinModal() {
+          el.skinModal.classList.remove("is-open");
+        }
+
+        el.skinBtn.addEventListener("click", openSkinModal);
+        $("#skinClose").addEventListener("click", closeSkinModal);
+        $("#skinDone").addEventListener("click", closeSkinModal);
+
+        el.skinModal.addEventListener("mousedown", (e) => {
+          if (e.target === el.skinModal) closeSkinModal();
+        });
+
+        const skinInput = document.createElement("input");
+        skinInput.type = "file";
+        skinInput.accept = "image/*";
+        skinInput.style.display = "none";
+        document.body.appendChild(skinInput);
+
+        $("#skinPick").addEventListener("click", () => skinInput.click());
+
+        skinInput.addEventListener("change", () => {
+          const file = skinInput.files && skinInput.files[0];
+          if (!file) return;
+          if (!file.type.startsWith("image/")) {
+            toast("请选择图片文件");
+            return;
+          }
+          if (file.size > 4 * 1024 * 1024) {
+            toast("图片过大（建议 < 4MB）");
+          }
+
+          const reader = new FileReader();
+          reader.onload = () => {
+            const dataUrl = reader.result;
+            applySkin(dataUrl, state.skinOpacity || 0.35);
+            try {
+              localStorage.setItem(SKIN_KEY, dataUrl);
+            } catch (_) {
+              toast("图片过大，未能持久化保存（本次仍生效）");
+            }
+            toast("背景已应用");
+          };
+          reader.readAsDataURL(file);
+          skinInput.value = "";
+        });
+
+        $("#skinClear").addEventListener("click", () => {
+          applySkin(null, 0);
+          try {
+            localStorage.removeItem(SKIN_KEY);
+          } catch (_) {}
+          toast("已移除背景");
+        });
+
+        el.skinOpacity.addEventListener("input", () => {
+          const v = Number(el.skinOpacity.value) / 100;
+          el.skinOpacityVal.textContent = el.skinOpacity.value + "%";
+          document.documentElement.style.setProperty(
+            "--skin-opacity",
+            String(v),
+          );
+          state.skinOpacity = v;
+          try {
+            localStorage.setItem(SKIN_OP_KEY, String(v));
+          } catch (_) {}
+        });
+
+        (function restoreSkin() {
+          let data = null;
+          let op = 0.35;
+          try {
+            data = localStorage.getItem(SKIN_KEY);
+          } catch (_) {}
+          try {
+            op = parseFloat(localStorage.getItem(SKIN_OP_KEY)) || 0.35;
+          } catch (_) {}
+
+          if (data) applySkin(data, op);
+          el.skinOpacity.value = String(Math.round(op * 100));
+          el.skinOpacityVal.textContent = Math.round(op * 100) + "%";
+        })();
+
+        /* ── 操作指引 ─────────────────────────────── */
+        function openGuideModal() {
+          el.guideModal.classList.add("is-open");
+        }
+
+        function closeGuideModal() {
+          el.guideModal.classList.remove("is-open");
+        }
+
+        el.guideBtn.addEventListener("click", openGuideModal);
+        $("#guideClose").addEventListener("click", closeGuideModal);
+        $("#guideOk").addEventListener("click", closeGuideModal);
+
+        el.guideModal.addEventListener("mousedown", (e) => {
+          if (e.target === el.guideModal) closeGuideModal();
+        });
+
+        /* ── 主题切换 ─────────────────────────────── */
+        function setTheme(theme) {
+          document.documentElement.setAttribute("data-theme", theme);
+          try {
+            localStorage.setItem("codetree.theme", theme);
+          } catch (_) {}
+        }
+
+        el.themeBtn.addEventListener("click", () => {
+          const cur = document.documentElement.getAttribute("data-theme");
+          setTheme(cur === "dark" ? "light" : "dark");
+        });
+
+        (function initTheme() {
+          let saved = null;
+          try {
+            saved = localStorage.getItem("codetree.theme");
+          } catch (_) {}
+          if (saved) {
+            setTheme(saved);
+            return;
+          }
+          if (
+            window.matchMedia &&
+            window.matchMedia("(prefers-color-scheme: dark)").matches
+          ) {
+            setTheme("dark");
+          }
+        })();
+
+        /* ── 分隔条拖拽 ───────────────────────────── */
+        (function initSplitter() {
+          let dragging = false;
+
+          el.splitter.addEventListener("mousedown", (e) => {
+            dragging = true;
+            el.splitter.classList.add("is-dragging");
+            document.body.style.cursor = "col-resize";
+            document.body.style.userSelect = "none";
+            e.preventDefault();
+          });
+
+          window.addEventListener("mousemove", (e) => {
+            if (!dragging) return;
+            const total = window.innerWidth;
+            const w = Math.max(210, Math.min(total - 320, e.clientX));
+            el.sidebar.style.width = w + "px";
+          });
+
+          window.addEventListener("mouseup", () => {
+            if (!dragging) return;
+            dragging = false;
+            el.splitter.classList.remove("is-dragging");
+            document.body.style.cursor = "";
+            document.body.style.userSelect = "";
+            try {
+              localStorage.setItem("codetree.sidebarW", el.sidebar.style.width);
+            } catch (_) {}
+          });
+
+          try {
+            const saved = localStorage.getItem("codetree.sidebarW");
+            if (saved) el.sidebar.style.width = saved;
+          } catch (_) {}
+        })();
+
+        /* ── 拖放 ─────────────────────────────────── */
+        (function initDrop() {
+          let depth = 0;
+
+          document.addEventListener("dragenter", (e) => {
+            e.preventDefault();
+            if (!e.dataTransfer) return;
+            const types = Array.from(e.dataTransfer.types || []);
+            if (!types.includes("Files")) return;
+            depth++;
+            document.body.classList.add("is-dropping");
+          });
+
+          document.addEventListener("dragover", (e) => e.preventDefault());
+
+          document.addEventListener("dragleave", () => {
+            depth = Math.max(0, depth - 1);
+            if (depth === 0) document.body.classList.remove("is-dropping");
+          });
+
+          document.addEventListener("drop", (e) => {
+            e.preventDefault();
+            depth = 0;
+            document.body.classList.remove("is-dropping");
+
+            if (!e.dataTransfer || !e.dataTransfer.items) return;
+
+            const entries = [];
+            for (const item of e.dataTransfer.items) {
+              if (item.kind !== "file") continue;
+              const entry = item.webkitGetAsEntry && item.webkitGetAsEntry();
+              if (entry) entries.push(entry);
+            }
+            if (!entries.length) return;
+
+            const collected = [];
+            Promise.all(entries.map((en) => walkEntry(en, "", collected)))
+              .then(() => {
+                if (!collected.length) {
+                  toast("没有读到文件");
+                  return;
+                }
+                if (collected.length > MAX_LOCAL_FILES) {
+                  toast("文件过多，仅读取前 " + MAX_LOCAL_FILES + " 个");
+                  collected.length = MAX_LOCAL_FILES;
+                }
+
+                resetState();
+                state.mode = "local";
+
+                const built = buildTreeFromEntries(collected);
+                state.rootName = built.name;
+                state.root = built.name;
+                state.tree = built.nodes;
+
+                computeCounts(state.tree);
+
+                el.pathInput.value = built.name + "/";
+                renderAll();
+                toast(
+                  "已载入 " +
+                    built.name +
+                    "（" +
+                    collected.length +
+                    " 个文件）",
+                );
+              })
+              .catch(() => toast("读取失败"));
+          });
+
+          function walkEntry(entry, prefix, out) {
+            const p = prefix ? prefix + "/" + entry.name : entry.name;
+
+            if (entry.isFile) {
+              return new Promise((resolve) => {
+                entry.file(
+                  (file) => {
+                    out.push({ path: p, size: file.size, file });
+                    resolve();
+                  },
+                  () => resolve(),
+                );
+              });
+            }
+
+            if (entry.isDirectory) {
+              const reader = entry.createReader();
+              const readBatch = () =>
+                new Promise((resolve) => {
+                  reader.readEntries(resolve, () => resolve([]));
+                });
+
+              return (async () => {
+                let batch;
+                do {
+                  batch = await readBatch();
+                  await Promise.all(batch.map((en) => walkEntry(en, p, out)));
+                } while (batch.length);
+              })();
+            }
+
+            return Promise.resolve();
+          }
+        })();
+
+        /* ── 全局键盘 ─────────────────────────────── */
+        document.addEventListener("keydown", (e) => {
+          const ae = document.activeElement;
+          const inEditable =
+            ae &&
+            (ae.tagName === "INPUT" ||
+              ae.tagName === "TEXTAREA" ||
+              ae.isContentEditable);
+
+          // ── 弹窗优先 ─────────────────────────────
+          if (el.guideModal.classList.contains("is-open")) {
+            if (e.key === "Escape") {
+              e.preventDefault();
+              closeGuideModal();
+            }
+            return;
+          }
+
+          if (el.importModal.classList.contains("is-open")) {
+            if (e.key === "Escape") {
+              e.preventDefault();
+              closeImportModal();
+              return;
+            }
+            if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+              e.preventDefault();
+              $("#importOnly").click();
+              return;
+            }
+            return;
+          }
+
+          if (el.skinModal.classList.contains("is-open")) {
+            if (e.key === "Escape") {
+              e.preventDefault();
+              closeSkinModal();
+              return;
+            }
+            return;
+          }
+
+          // ── Ctrl/Cmd + / ：操作指引 ──────────────
+          if ((e.ctrlKey || e.metaKey) && e.key === "/") {
+            e.preventDefault();
+            if (el.guideModal.classList.contains("is-open")) closeGuideModal();
+            else openGuideModal();
+            return;
+          }
+
+          // ── Ctrl/Cmd + I ：批量导入 ──────────────
+          if (
+            (e.ctrlKey || e.metaKey) &&
+            !e.shiftKey &&
+            !e.altKey &&
+            (e.key === "i" || e.key === "I")
+          ) {
+            e.preventDefault();
+            openImportModal();
+            return;
+          }
+
+          // ── Enter：激活搜索框 / 读取路径 ──────────
+          if (
+            e.key === "Enter" &&
+            !e.ctrlKey &&
+            !e.metaKey &&
+            !e.shiftKey &&
+            !e.altKey
+          ) {
+            if (ae === el.pathInput) {
+              e.preventDefault();
+              if (el.pathInput.value.trim()) loadFromServer(el.pathInput.value);
+              else toast("请输入文件夹路径");
+              return;
+            }
+
+            if (ae === el.search) return;
+
+            if (ae && ae.classList && ae.classList.contains("row")) return;
+
+            if (!inEditable) {
+              e.preventDefault();
+              el.search.focus();
+              el.search.select();
+              return;
+            }
+          }
+
+          // ── Ctrl/Cmd + K ：激活路径输入框 ─────────
+          if ((e.ctrlKey || e.metaKey) && (e.key === "k" || e.key === "K")) {
+            e.preventDefault();
+            if (el.pathInput.disabled) {
+              toast("当前模式不支持路径输入，请用「选择文件夹」或拖入");
+              return;
+            }
+            el.pathInput.focus();
+            el.pathInput.select();
+            return;
+          }
+
+          // ── / ：激活路径输入框（非输入态） ────────
+          if (
+            e.key === "/" &&
+            !e.ctrlKey &&
+            !e.metaKey &&
+            !e.altKey &&
+            !inEditable
+          ) {
+            e.preventDefault();
+            if (el.pathInput.disabled) {
+              toast("当前模式不支持路径输入，请用「选择文件夹」或拖入");
+              return;
+            }
+            el.pathInput.focus();
+            el.pathInput.select();
+            return;
+          }
+
+          // ── Ctrl/Cmd + C ：复制 ──────────────────
+          // 输入框内不拦截，保留原生复制
+          if ((e.ctrlKey || e.metaKey) && (e.key === "c" || e.key === "C")) {
+            if (inEditable) return;
+            // 如果用户主动选了页面文字，交给原生复制
+            const sel = window.getSelection && window.getSelection();
+            if (sel && sel.toString().length > 0) return;
+
+            e.preventDefault();
+            copyCurrentSelection();
+            return;
+          }
+
+          // ── Escape：取消激活 ──────────────────────
+          if (e.key === "Escape") {
+            if (inEditable) return;
+            if (state.focusZone === "tabs") {
+              e.preventDefault();
+              setFocusZone("tree");
+              return;
+            }
+            if (state.search) {
+              e.preventDefault();
+              el.search.value = "";
+              state.search = "";
+              renderTree();
+              return;
+            }
+            state.cursorPath = null;
+            updateCursorClass();
+            return;
+          }
+
+          // ── 区域切换：← → 与 Tab ──────────────────
+          if (
+            !inEditable &&
+            (e.key === "ArrowLeft" || e.key === "ArrowRight")
+          ) {
+            const node = state.cursorPath
+              ? findNodeByPath(state.tree, state.cursorPath)
+              : null;
+            const onDir = node && node.type === "dir" && focusInTree();
+
+            if (!onDir) {
+              e.preventDefault();
+              if (e.key === "ArrowLeft") setFocusZone("tree");
+              else setFocusZone("output");
+              return;
+            }
+          }
+
+          // ── Tab：循环切换三个标签 ─────────────────
+          // Shift + Tab 反向切换
+          if (e.key === "Tab" && !e.ctrlKey && !e.metaKey && !e.altKey) {
+            e.preventDefault();
+            cycleTab(e.shiftKey ? -1 : 1);
+            return;
+          }
+
+          // ── 搜索框内上下键：接管到结果列表 ────────
+          if (
+            ae === el.search &&
+            (e.key === "ArrowDown" ||
+              e.key === "ArrowUp" ||
+              e.key === "PageDown" ||
+              e.key === "PageUp")
+          ) {
+            e.preventDefault();
+            setFocusZone("tree");
+            if (!state.cursorPath && state.cursorList.length) {
+              state.cursorPath = state.cursorList[0];
+              updateCursorClass();
+            } else if (e.key === "ArrowDown" || e.key === "PageDown") {
+              moveCursor("ArrowDown");
+            } else {
+              moveCursor("ArrowUp");
+            }
+            return;
+          }
+
+          // ── 树内方向键 / 空格 / P ─────────────────
+          if (!inEditable && state.cursorList.length && focusInTree()) {
+            const navKeys = [
+              "ArrowDown",
+              "ArrowUp",
+              "PageDown",
+              "PageUp",
+              "Home",
+              "End",
+            ];
+
+            if (navKeys.includes(e.key)) {
+              e.preventDefault();
+              moveCursor(e.key);
+              return;
+            }
+
+            if (e.key === " ") {
+              e.preventDefault();
+              if (state.cursorPath) activatePath(state.cursorPath);
+              return;
+            }
+
+            if (
+              (e.key === "p" || e.key === "P") &&
+              !e.ctrlKey &&
+              !e.metaKey &&
+              !e.altKey
+            ) {
+              if (!state.cursorPath) return;
+              const node = findNodeByPath(state.tree, state.cursorPath);
+              if (node && node.type === "dir") {
+                e.preventDefault();
+                if (state.collapsed.has(node.path))
+                  state.collapsed.delete(node.path);
+                else state.collapsed.add(node.path);
+                renderTree();
+                updateCursorClass();
+              }
+              return;
+            }
+          }
+
+          // ── Ctrl/Cmd + Enter ：复制 ──────────────
+          if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+            e.preventDefault();
+            el.copyBtn.click();
+            return;
+          }
+        });
+
+        /* ── 服务器可用性检测 ─────────────────────── */
+        async function checkServer() {
+          if (location.protocol === "file:") {
+            return { available: false, reason: "file-protocol" };
+          }
+          try {
+            const ctl = new AbortController();
+            const timer = setTimeout(() => ctl.abort(), 2500);
+            const r = await fetch("/api/info", { signal: ctl.signal });
+            clearTimeout(timer);
+            if (!r.ok) return { available: false, reason: "http-" + r.status };
+            const info = await r.json().catch(() => ({}));
+            return { available: true, info };
+          } catch (_) {
+            return { available: false, reason: "network" };
+          }
+        }
+
+        function setPathModeEnabled(enabled, reason, info) {
+          el.pathInput.disabled = !enabled;
+          el.loadBtn.disabled = !enabled;
+
+          if (enabled) {
+            el.pathInput.placeholder =
+              info && info.cwd
+                ? "输入路径，或试试 " + info.cwd
+                : "输入文件夹路径，回车读取（支持任意位置）";
+            el.loadBtn.title = "";
+            return;
+          }
+
+          if (reason === "file-protocol") {
+            el.pathInput.placeholder =
+              "file:// 打开时不可用路径模式 —— 请改用「选择文件夹」或直接拖入";
+          } else {
+            el.pathInput.placeholder =
+              "未连接到服务器 —— 请先启动 Node 服务，或改用「选择文件夹」";
+          }
+          el.loadBtn.title = "路径模式需要 Node 服务器";
+        }
+
+        /* ── 启动 ─────────────────────────────────── */
+        (async function boot() {
+          updateToolbar();
+
+          el.tree.classList.add("is-zone-focus");
+
+          const server = await checkServer();
+          setPathModeEnabled(server.available, server.reason, server.info);
+
+          let lastPath = "";
+          try {
+            lastPath = localStorage.getItem("codetree.lastPath") || "";
+          } catch (_) {}
+          if (lastPath) el.pathInput.value = lastPath;
+
+          if (!server.available && !state.tree.length) {
+            el.out.textContent =
+              "当前以 " +
+              location.protocol.replace(":", "") +
+              " 方式打开，只能使用本地读取。\n\n" +
+              "▸ 点上方「选择文件夹」，或把项目文件夹直接拖到窗口里\n" +
+              "▸ 想用路径模式，请先启动服务器：npm start，然后访问 http://localhost:3000\n\n" +
+              "两种方式都完全在本地进行，不会上传任何内容。\n" +
+              "按 Ctrl/Cmd + / 查看完整操作指引。";
+            el.out.classList.add("is-placeholder");
+            return;
+          }
+
+          renderOutput();
+        })();
+      })();
+    </script>
+  </body>
+</html>
